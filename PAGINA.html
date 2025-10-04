@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>KukulImpact — Tipos reales & poblacion</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { margin:0; display:flex; height:100vh; font-family:Inter,system-ui,Arial; background:#071021; color:#e6f0ff; }
+    #map { flex:1; height:100vh; }
+    #panel { width:420px; padding:18px; background:linear-gradient(180deg, rgba(8,13,23,0.96), rgba(6,10,18,0.96)); box-shadow:-8px 0 24px rgba(0,0,0,0.6); overflow:auto; }
+    h1 { margin:0 0 8px 0; font-size:20px; color:#7fd3ff; }
+    label { display:block; margin-top:12px; color:#bfe8ff; font-weight:600; }
+    select,input[type=range],input[type=number],button { width:100%; margin-top:6px; padding:8px; border-radius:8px; border:0; font-size:14px; }
+    .row { display:flex; gap:8px; }
+    .row>div{flex:1}
+    button { background:#7fd3ff; color:#032129; cursor:pointer; font-weight:700; }
+    button:disabled { opacity:0.5; cursor:not-allowed;}
+    pre { background:#05111a; padding:12px; border-radius:8px; color:#c8ffd8; white-space:pre-wrap; margin-top:12px; font-size:13px; }
+    small { color:#93c7df; display:block; margin-top:8px; }
+    .muted { color:#7aa9c9; font-size:13px; }
+    .inline { display:inline-block; margin-left:6px; color:#9feaff; font-weight:700; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="panel">
+    <h1>KukulImpact — Tipos reales & cálculo de afectación</h1>
+
+    <label>Escenario predeterminado</label>
+    <select id="preset">
+      <option value="">-- ninguno --</option>
+      <option value="chelyabinsk">Chelyabinsk (2013) — bolide (~18 m)</option>
+      <option value="tunguska">Tunguska (1908) — airexplosión (~50–60 m)</option>
+      <option value="chicxulub">Chicxulub (K-Pg) — impacto gigante (~10–15 km)</option>
+    </select>
+
+    <label>Tipo de meteorito (real)</label>
+    <select id="type">
+      <!-- densities in kg/m3 derived from literature (g/cm3 *1000) -->
+      <option value="ordinary">Ordinary chondrite — condrita ordinaria (ρ ≈ 3300 kg/m³)</option>
+      <option value="carbonaceous">Carbonaceous chondrite — condrita carbonácea (ρ ≈ 2200 kg/m³)</option>
+      <option value="iron">Iron meteorite — hierro (ρ ≈ 7800 kg/m³)</option>
+      <option value="stony_iron">Stony-iron (pallasite) (ρ ≈ 4500 kg/m³)</option>
+      <option value="cometary">Cometary / porous (ρ ≈ 600 kg/m³)</option>
+    </select>
+
+    <label>Diámetro (m) <span id="diamText" class="inline">500</span></label>
+    <input id="diam" type="range" min="1" max="200000" value="500" step="1"/>
+
+    <div class="row">
+      <div>
+        <label>Velocidad (km/s)</label>
+        <input id="vel" type="number" step="0.1" value="17" />
+      </div>
+      <div>
+        <label>Ángulo (°)</label>
+        <input id="ang" type="number" step="1" value="45" />
+      </div>
+    </div>
+
+    <label>Presets de densidad poblacional (personas / km²)</label>
+    <select id="popPreset">
+      <option value="">-- seleccionar / personalizar abajo --</option>
+      <option value="5000">Área urbana densa — 5,000 / km²</option>
+      <option value="1500">Ciudad — 1,500 / km²</option>
+      <option value="300">Suburbano — 300 / km²</option>
+      <option value="50">Rural — 50 / km²</option>
+      <option value="1">Área escasamente poblada — 1 / km²</option>
+      <option value="0">Océano — 0 / km²</option>
+    </select>
+
+    <label>Densidad poblacional personalizada (personas / km²)</label>
+    <input id="popDensity" type="number" step="1" value="300" />
+
+    <label>Selecciona punto en el mapa</label>
+    <div class="muted">Haz clic en el mapa para colocar el punto de impacto.</div>
+
+    <button id="simulate" disabled>Simular impacto local (todo en navegador)</button>
+
+    <pre id="results">Esperando selección...</pre>
+    <small>Fuentes: estudios de propiedades físicas de meteoritos y eventos históricos (Chelyabinsk, Tunguska, Chicxulub). Densidades y datos documentados usados para presets. (Referencias en el panel final).</small>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // ---------- Datos reales usados (literatura) ----------
+    const TYPE_DATA = {
+      "ordinary": {name:"Ordinary chondrite", density:3300, note:"Condrita ordinaria (ρ ≈ 3.0–3.7 g/cm³)."}, 
+      "carbonaceous": {name:"Carbonaceous chondrite", density:2200, note:"Condrita carbonácea (CI/CM pueden tener ρ bajos por alta porosidad)."},
+      "iron": {name:"Iron meteorite", density:7800, note:"Meteorito metálico (ρ ≈ 7–8 g/cm³)."},
+      "stony_iron": {name:"Stony-iron (Pallasite)", density:4500, note:"Pallasitas / mixtos, densidad intermedia."},
+      "cometary": {name:"Cometary / porous", density:600, note:"Cometario/poroso (hielo + polvo), densidad baja."}
+    };
+
+    // ---------- Map & UI ----------
+    const map = L.map('map').setView([20,0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap contributors' }).addTo(map);
+
+    const diam = document.getElementById('diam');
+    const diamText = document.getElementById('diamText');
+    const vel = document.getElementById('vel');
+    const ang = document.getElementById('ang');
+    const typeSel = document.getElementById('type');
+    const popDensityInput = document.getElementById('popDensity');
+    const popPreset = document.getElementById('popPreset');
+    const preset = document.getElementById('preset');
+    const simulateBtn = document.getElementById('simulate');
+    const results = document.getElementById('results');
+
+    diam.oninput = ()=> diamText.textContent = diam.value;
+    popPreset.onchange = ()=> { if(popPreset.value) popDensityInput.value = popPreset.value; };
+
+    // Presets históricos (valores basados en estimaciones públicas)
+    const SCENARIOS = {
+      chelyabinsk: {diameter:18, velocity:19.16, type:"ordinary", note:"Chelyabinsk (2013) — estimado ~17–20 m, ~0.4–0.5 Mt equivalente."},
+      tunguska: {diameter:55, velocity:15, type:"ordinary", note:"Tunguska (1908) — estimado ~50–60 m, energía 10–15 Mt (airexplosión)."},
+      chicxulub: {diameter:12000, velocity:20, type:"carbonaceous", note:"Chicxulub (impacto K-Pg): ∼10–15 km impactor (estimación)."}
+    };
+
+    // handle presets
+    preset.onchange = () => {
+      const key = preset.value;
+      if (!key) return;
+      const s = SCENARIOS[key];
+      diam.value = s.diameter; diamText.textContent = s.diameter;
+      vel.value = s.velocity; ang.value = 45;
+      typeSel.value = s.type;
+      results.textContent = "Cargado preset: " + s.note;
+    };
+
+    // map click point
+    let impactMarker = null, impactLatLng = null;
+    map.on('click', (e) => {
+      if (impactMarker) map.removeLayer(impactMarker);
+      impactLatLng = e.latlng;
+      impactMarker = L.marker(e.latlng).addTo(map).bindPopup('Punto de impacto').openPopup();
+      simulateBtn.disabled = false;
+      results.textContent = `Impacto seleccionado: ${impactLatLng.lat.toFixed(4)}, ${impactLatLng.lng.toFixed(4)}. Ajusta parámetros y pulsa Simular.`;
+    });
+
+    // ---------- Física simplificada (todo en navegador) ----------
+    function sphereVolume(d) { return (Math.PI/6)*Math.pow(d,3); } // m^3
+    function massFromDiameter(d_m, density_kg_m3) { return sphereVolume(d_m) * density_kg_m3; } // kg
+    // Energy KE = 0.5 m v^2
+    function kineticEnergyJ(mass_kg, v_km_s) { const v = v_km_s * 1000; return 0.5 * mass_kg * v * v; }
+    const J_PER_MEGATON = 4.184e15;
+
+    // Crater diameter empirical rough (meters) -- simplified scaling
+    function estimateCraterDiameter_m(E_j) {
+      // approximate scaling: D(km) ≈ 0.01 * (E_megatons)^(1/3) *factor
+      const E_mt = E_j / J_PER_MEGATON;
+      // use a bit stronger scaling for big impacts
+      const D_km = 0.01 * Math.pow(E_mt, 1/3) * Math.max(1, Math.log10(1+E_mt));
+      return Math.max(1, D_km * 1000);
+    }
+
+    // Approx. seismic magnitude from energy (very rough): M ≈ (2/3)*(log10(E_j) - 4.8)
+    function approxRichter(E_j) {
+      return (2/3) * (Math.log10(E_j) - 4.8);
+    }
+
+    // Blast/destruction radius (km) rough: scale with E^(1/3)
+    function blastRadius_km(E_j) {
+      // tuned constant: for 1 Mt (~4.184e15 J) -> radius ~ 10 km
+      const E_mt = E_j / J_PER_MEGATON;
+      return 10 * Math.pow(E_mt, 1/3);
+    }
+
+    // compute affected population: area(circle) * density
+    function estimateAffectedPopulation(radius_km, popDensity_per_km2) {
+      const area = Math.PI * Math.pow(radius_km, 2); // km²
+      return Math.round(area * popDensity_per_km2);
+    }
+
+    // ---------- Main simulate ----------
+    function simulateImpact() {
+      if (!impactLatLng) { results.textContent = "Selecciona un punto en el mapa."; return; }
+
+      const d = Number(diam.value); // m
+      const v = Number(vel.value); // km/s
+      const a = Number(ang.value);
+      const typeKey = typeSel.value;
+      const typeInfo = TYPE_DATA[typeKey];
+      const rho = typeInfo.density; // kg/m3
+      const popDens = Number(popDensityInput.value) || 0; // persons per km2
+
+      const mass = massFromDiameter(d, rho); // kg
+      const E = kineticEnergyJ(mass, v); // J
+      const E_mt = E / J_PER_MEGATON;
+      const crater_m = estimateCraterDiameter_m(E);
+      const seismic = approxRichter(E);
+      const blast_km = blastRadius_km(E);
+      const affectedPop = estimateAffectedPopulation(blast_km, popDens);
+
+      // build results readable
+      const res = {
+        punto: { lat: impactLatLng.lat.toFixed(4), lon: impactLatLng.lng.toFixed(4) },
+        tipo: typeInfo.name,
+        densidad_tipo_kg_m3: rho,
+        diámetro_m: d,
+        masa_kg: mass.toExponential(3),
+        velocidad_km_s: v,
+        energía_J: E.toExponential(3),
+        energía_Mt_TNT: Number(E_mt.toFixed(3)),
+        diámetro_cráter_m_estimado: Math.round(crater_m),
+        magnitud_sísmica_equivalente_Richter: Number(seismic.toFixed(1)),
+        radio_destrucción_km_aprox: Number(blast_km.toFixed(1)),
+        población_por_km2_usada: popDens,
+        población_afectada_estimada: affectedPop,
+        nota: "Modelos simplificados. Para análisis científico usar modelos completos (Collins et al.)."
+      };
+
+      // display textual result and draw crater & blast overlay
+      results.textContent = JSON.stringify(res, null, 2);
+
+      // draw crater persistent
+      const craterRadius_m = Math.max(50, Math.round(res.diámetro_cráter_m_estimado/2)); // radius in m
+      if (window._craterCircle) map.removeLayer(window._craterCircle);
+      window._craterCircle = L.circle(impactLatLng, {
+        radius: craterRadius_m,
+        color: '#ffbf00',
+        fillColor: '#ff8a00',
+        fillOpacity: 0.25,
+        weight:1
+      }).addTo(map).bindPopup(`Cráter est.: ${Math.round(res.diámetro_cráter_m_estimado)} m`);
+
+      // draw blast radius (rough)
+      const blast_m = Math.round(res.radio_destrucción_km_aprox * 1000);
+      if (window._blastCircle) map.removeLayer(window._blastCircle);
+      window._blastCircle = L.circle(impactLatLng, {
+        radius: blast_m,
+        color: '#ff4d4d',
+        fillColor: '#ff4d4d',
+        fillOpacity: 0.08,
+        weight:1
+      }).addTo(map).bindPopup(`Radio destrucción ≈ ${res.radio_destrucción_km_aprox} km`);
+
+      // center map a little to show overlays
+      map.panTo(impactLatLng);
+    }
+
+    // ---------- Animation: meteor + wave (simple) ----------
+    function animateMeteorAndImpact() {
+      if (!impactLatLng) return;
+      // meteor animation using canvas on top of map container
+      const mapCont = document.getElementById('map');
+      const canvas = document.createElement('canvas');
+      canvas.style.position = 'absolute'; canvas.style.top = 0; canvas.style.left = 0; canvas.style.pointerEvents = 'none';
+      canvas.width = mapCont.offsetWidth; canvas.height = mapCont.offsetHeight; canvas.className = 'meteor-canvas';
+      mapCont.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+
+      const dest = map.latLngToContainerPoint(impactLatLng);
+      const start = { x: dest.x, y: dest.y - 600 }; // start above
+      let t = 0;
+
+      function frame() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        // tail
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y + t*6);
+        ctx.lineTo(dest.x, dest.y);
+        const grad = ctx.createLinearGradient(start.x, start.y, dest.x, dest.y);
+        grad.addColorStop(0, 'rgba(255,220,120,0)');
+        grad.addColorStop(1, 'rgba(255,160,40,1)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // head
+        const headY = Math.min(dest.y, start.y + t*6);
+        ctx.beginPath();
+        ctx.arc(dest.x, headY, 6 + (t/10), 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,190,60,0.95)';
+        ctx.fill();
+
+        t++;
+        if (start.y + t*6 < dest.y + 10) {
+          requestAnimationFrame(frame);
+        } else {
+          // impact flash & wave
+          mapCont.removeChild(canvas);
+          // small flash circle using Leaflet
+          const flash = L.circle(impactLatLng, { radius:20000, color:'#fff59d', fillColor:'#fff59d', fillOpacity:0.9, weight:0 }).addTo(map);
+          setTimeout(()=>map.removeLayer(flash), 600);
+          // animated expanding wave (simple)
+          let s=0;
+          const wave = L.circle(impactLatLng, { radius:1, color:'#ff6b6b', weight:2, fillOpacity:0.15 }).addTo(map);
+          const waveInt = setInterval(()=>{
+            s++;
+            wave.setRadius(s*2000);
+            wave.setStyle({opacity: Math.max(0, 1 - s/30), fillOpacity: Math.max(0, 0.15 - s/200)});
+            if (s>30) { map.removeLayer(wave); clearInterval(waveInt); }
+          },40);
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    // ---------- bind -->
+    simulateBtn.onclick = () => {
+      simulateImpact();
+      animateMeteorAndImpact();
+    };
+
+    // ---------- citations panel (small) ----------
+    // We won't show clickable links inside the HTML to keep it offline-friendly;
+    // see chat message for citations used.
+  </script>
+</body>
+</html>
