@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ChaacImpact — Simulador (datos reales de población & tsunami)</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;font-family:Segoe UI,Arial,sans-serif;background:#000}
+  #map{position:absolute;inset:0;z-index:1}
+
+  /* Panel */
+  #panel{
+    position:absolute;bottom:10px;left:15px;z-index:1000;
+    background:rgba(255,255,255,0.97);padding:15px;border-radius:12px;
+    width:340px;box-shadow:0 0 14px rgba(0,0,0,0.25);
+  }
+  h1{margin:0 0 6px;font-size:20px;color:#004a7c;text-align:center}
+  p.desc{margin-top:0;font-size:13px;color:#004a7c;text-align:center}
+  label{display:block;margin-top:8px;font-weight:600;color:#003355}
+  input[type=range]{width:100%;margin:5px 0;height:6px;border-radius:3px;background:#cfd8dc;outline:none}
+  input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;border-radius:50%;background:#0080ff;cursor:pointer}
+  select,button{width:100%;padding:7px;margin-top:5px;border:1px solid #ccc;border-radius:6px;font-size:14px}
+  button{background:#0080ff;color:white;font-weight:bold;cursor:pointer;border:none;border-radius:8px;padding:8px}
+  button:disabled{opacity:0.5;cursor:not-allowed}
+  .val{float:right;color:#004a7c;font-weight:bold;font-size:13px}
+
+  /* Botón mundo / hint */
+  #worldBtn{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:none;border:none;font-size:28px;cursor:pointer;z-index:1100}
+  #hint{position:absolute;top:52px;left:50%;transform:translateX(-50%);color:white;background:rgba(0,0,0,0.4);padding:4px 8px;border-radius:6px;font-weight:700;z-index:1100;animation:pulse 1.2s infinite}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
+
+  /* Popup info */
+  #infoPopup{display:none;position:absolute;top:84px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.98);color:#002b55;border-radius:12px;width:420px;padding:14px;box-shadow:0 0 20px rgba(0,0,0,0.35);z-index:1200;font-size:13px;max-height:60vh;overflow:auto}
+
+  /* Impact message centered */
+  #impactMessage{
+    display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.65);color:#fff;padding:16px 22px;border-radius:12px;font-size:18px;text-align:center;z-index:6000;
+  }
+
+  /* Flash overlay */
+  #flash{position:fixed;inset:0;background:white;opacity:0;z-index:7000;pointer-events:none;transition:opacity .25s linear, background .25s linear}
+
+  /* Dust global layer */
+  #dustLayer{position:fixed;inset:0;z-index:6800;pointer-events:none;opacity:0;transition:opacity .5s ease;background: radial-gradient(circle at 50% 20%, rgba(220,220,220,0.16), rgba(140,140,140,0.26) 40%, rgba(60,60,60,0.5) 80%);mix-blend-mode:multiply;display:none}
+
+  /* Shake animation */
+  @keyframes shake { 0% { transform:none; } 10% { transform: translate(-6px,4px) rotate(-1deg); } 20% { transform:none; } 30% { transform: translate(6px,-6px) rotate(1deg);} 40%{transform:none;} 50% { transform: translate(-4px,5px) rotate(-1deg);} 60%{transform:none;} 100% { transform:none; } }
+  .shake{animation:shake .8s ease-in-out}
+
+  /* small screens */
+  @media (max-width:600px){
+    #panel{width:280px;left:8px;bottom:8px;padding:12px}
+    #infoPopup{width:320px;top:70px}
+    #impactMessage{font-size:16px;padding:12px}
+  }
+
+  .tsunami-marker { pointer-events: none; opacity: 0.65; }
+</style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="flash"></div>
+  <div id="dustLayer"></div>
+
+  <button id="worldBtn" title="Ver información">🌍</button>
+  <div id="hint">⬇︎ Clic aquí</div>
+
+  <div id="infoPopup" aria-live="polite"></div>
+
+  <div id="panel">
+    <h1>⚡ ChaacImpact</h1>
+    <p class="desc">Crea tu propio asteroide y observa su impacto sobre la Tierra.</p>
+
+    <label>Tipo de asteroide</label>
+    <select id="type">
+      <option value="iron">Hierro — 7800 kg/m³</option>
+      <option value="ordinary">Condrita ordinaria — 3300 kg/m³</option>
+      <option value="carbonaceous">Condrita carbonácea — 2200 kg/m³</option>
+      <option value="stony_iron">Pallasita — 4500 kg/m³</option>
+      <option value="cometary">Cometario — 600 kg/m³</option>
+    </select>
+
+    <label>Diámetro (m) <span class="val" id="diamVal">50</span></label>
+    <input type="range" id="diam" min="1" max="10000" value="50">
+
+    <label>Velocidad (km/s) <span class="val" id="velVal">25</span></label>
+    <input type="range" id="vel" min="10" max="100" value="25">
+
+    <label>Ángulo (°) <span class="val" id="angVal">45</span></label>
+    <input type="range" id="ang" min="15" max="75" value="45">
+
+    <!-- OBS: eliminé aquí el control de densidad poblacional. Ahora se obtiene automáticamente por país. -->
+
+    <p>Haz clic en el mapa para seleccionar el punto de impacto.</p>
+    <button id="simulate" disabled>Simular impacto</button>
+    <pre id="results">Esperando selección...</pre>
+  </div>
+
+  <div id="impactMessage" role="status" aria-live="assertive"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+  // ---------- Inicialización Leaflet ----------
+  const map = L.map('map', { minZoom:2, maxZoom:7, worldCopyJump:false, zoomControl:true }).setView([20,0],3);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+  map.setMaxBounds([[-85,-180],[85,180]]);
+
+  // DOM
+  const simulateBtn = document.getElementById('simulate');
+  const impactMessage = document.getElementById('impactMessage');
+  const flash = document.getElementById('flash');
+  const dustLayer = document.getElementById('dustLayer');
+  const worldBtn = document.getElementById('worldBtn');
+  const infoPopup = document.getElementById('infoPopup');
+  const hint = document.getElementById('hint');
+  const results = document.getElementById('results');
+
+  // Datos
+  const TYPE_DATA = {
+    iron:{density:7800,name:"Hierro"},
+    ordinary:{density:3300,name:"Condrita ordinaria"},
+    carbonaceous:{density:2200,name:"Condrita carbonácea"},
+    stony_iron:{density:4500,name:"Pallasita"},
+    cometary:{density:600,name:"Cometario"}
+  };
+
+  let impactMarker = null;
+  let impactLatLng = null;
+  window._layers = window._layers || [];
+  window._lastSim = null;
+
+  // constantes
+  const J_PER_MEGATON = 4.184e15;
+  const sphereVol = d => Math.PI/6 * Math.pow(d,3);
+  const kineticE = (m,v) => 0.5 * m * Math.pow(v*1000,2);
+
+  // FUNCIONES DE ESCALADO (conservadoras)
+  function craterMeters(E_J){ const E_mt = Math.max(1e-9, E_J/J_PER_MEGATON); const D_km = Math.max(0.05, 0.002 * Math.pow(E_mt, 0.33)); return D_km * 1000; }
+  function blastRadius_km(E_J){ const E_mt = Math.max(1e-9, E_J/J_PER_MEGATON); return Math.min(15000, Math.max(0.5, 10 * Math.pow(E_mt, 0.33))); }
+  function thermalRadius_km(E_J){ const E_mt = Math.max(1e-9, E_J/J_PER_MEGATON); return Math.min(10000, Math.max(0.2, 6 * Math.pow(E_mt, 0.3))); }
+  function seismicRadius_km(E_J){ const E_mt = Math.max(1e-9, E_J/J_PER_MEGATON); return Math.min(20000, Math.max(5, 25 * Math.pow(E_mt, 0.2))); }
+
+  // Estimación de muertes usando densidad por país (personas/km2) y área afectada
+  function estimateDeathsFromDensity(E_J, density_km2){
+    const E_mt = E_J / J_PER_MEGATON;
+    if(E_mt < 0.01) return 0;
+    // radio letal aproximado en km (conservador)
+    const lethal_km = Math.min(500, 2.5 * Math.pow(E_mt, 0.4));
+    const area = Math.PI * Math.pow(lethal_km, 2); // km^2
+    const baseMortality = 0.2; // fracción de la población en el área afectada que muere (conservador)
+    return Math.round(density_km2 * area * baseMortality);
+  }
+
+  // Heurística océano/tierra (sin APIs pesadas)
+  function isOcean(lat, lng){
+    let lon = ((lng + 180) % 360 + 360) % 360 - 180;
+    if(lon < -70 || lon > 120) return true;
+    if(lon >= -70 && lon <= 20 && Math.abs(lat) <= 65){
+      if(!(lat >= -35 && lat <= 70 && lon >= -20 && lon <= 40)) return true;
+    }
+    if(lon > 20 && lon <= 120 && lat <= 30 && lat >= -60) return true;
+    if(lat < -60) return true;
+    return false;
+  }
+
+  // ---------- NUEVO: Reverse geocode (Nominatim) -> country code; luego World Bank para densidad ----------
+  // Nominatim API (OpenStreetMap). Docs: https://nominatim.org/release-docs/latest/api/Reverse/ . Use lightly.
+  async function fetchCountryInfo(lat, lng){
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=5&addressdetails=1`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+      if(!res.ok) throw new Error('Nominatim error');
+      const js = await res.json();
+      const country = js.address && (js.address.country || js.address.country_code) ? (js.address.country || null) : null;
+      const country_code = js.address && js.address.country_code ? js.address.country_code.toLowerCase() : null;
+      // note: if no country_code -> likely ocean or sparse area
+      return { country: country || null, country_code: country_code || null, raw: js };
+    } catch(err) {
+      console.warn('Reverse geocode failed', err);
+      return { country: null, country_code: null, raw: null };
+    }
+  }
+
+  // World Bank API for population density indicator EN.POP.DNST
+  // Example: https://api.worldbank.org/v2/country/us/indicator/EN.POP.DNST?format=json&per_page=1&date=2020:2023
+  async function fetchCountryDensity(country_code){
+    if(!country_code) return null;
+    try {
+      // pedimos los últimos 3 años para encontrar un valor no nulo
+      const url = `https://api.worldbank.org/v2/country/${encodeURIComponent(country_code)}/indicator/EN.POP.DNST?format=json&per_page=5&date=2018:2023`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('WorldBank API error');
+      const js = await res.json();
+      // la respuesta es [metadata, [dataEntries...]]
+      if(!Array.isArray(js) || js.length < 2) return null;
+      const dataEntries = js[1];
+      if(!Array.isArray(dataEntries) || dataEntries.length === 0) return null;
+      // buscar el primer valor no-nulo
+      for(const entry of dataEntries){
+        if(entry && entry.value !== null) return Number(entry.value);
+      }
+      return null;
+    } catch(err){
+      console.warn('World Bank fetch failed', err);
+      return null;
+    }
+  }
+
+  // ---------- Interacción map click ----------
+  map.on('click', async (e) => {
+    if(impactMarker) map.removeLayer(impactMarker);
+    impactLatLng = e.latlng;
+    impactMarker = L.marker(e.latlng).addTo(map).bindPopup("☄ Punto de impacto").openPopup();
+    simulateBtn.disabled = false;
+
+    // busco país y densidad (no necesaria para simular, pero mostramos en resultados)
+    results.textContent = 'Obteniendo datos geográficos y densidad poblacional...';
+    const info = await fetchCountryInfo(e.latlng.lat, e.latlng.lng);
+    let density = null;
+    let countryName = null;
+    if(info && info.country_code){
+      countryName = info.country || null;
+      density = await fetchCountryDensity(info.country_code);
+    }
+    // si no obtuve densidad, uso un valor por defecto conservador (ej. 50 personas/km²)
+    if(density === null || isNaN(density)){
+      density = 50;
+      countryName = countryName || 'Área no determinada (usar densidad por defecto)';
+    }
+    // guardar en lastSim
+    window._lastLocationInfo = { country: countryName, country_code: info.country_code, density_km2: density };
+    results.textContent = `Ubicación: ${countryName || 'Océano / No determinado'} — Densidad estimada: ${density.toLocaleString()} pers/km².`;
+  });
+
+  // ---------- Simulación ----------
+  document.getElementById('simulate').addEventListener('click', ()=> {
+    if(!impactLatLng) return;
+    const typeKey = document.getElementById('type').value;
+    const rho = TYPE_DATA[typeKey].density;
+    const d = Math.max(1, Math.min(10000, +document.getElementById('diam').value)); // cap 1..10000
+    const v = Math.max(10, Math.min(100, +document.getElementById('vel').value));
+    const a = Math.max(15, Math.min(75, +document.getElementById('ang').value));
+
+    // Obtenemos densidad desde la info que se buscó en el click; si no está, fallback
+    const loc = window._lastLocationInfo || {};
+    const density_km2 = (loc.density_km2 && typeof loc.density_km2 === 'number') ? loc.density_km2 : 50;
+
+    const m = sphereVol(d) * rho;
+    const E = kineticE(m, v) * Math.sin(a * Math.PI/180);
+    const crater_m = craterMeters(E);
+    const blast_km = blastRadius_km(E);
+    const thermal_km = thermalRadius_km(E);
+    const seismic_km = seismicRadius_km(E);
+    const deaths = estimateDeathsFromDensity(E, density_km2);
+
+    // guardar última simulación (incluyendo densidad y país)
+    window._lastSim = { d, v, a, rho, density_km2, country: loc.country, country_code: loc.country_code, m, E, crater_m, blast_km, thermal_km, seismic_km, deaths, lat:impactLatLng.lat, lng:impactLatLng.lng };
+
+    // limpiar capas previas
+    if(window._layers) window._layers.forEach(l => { try{ map.removeLayer(l); }catch(e){} });
+    window._layers = [];
+
+    animateMeteor(impactLatLng, d, a, E, crater_m, blast_km, thermal_km, seismic_km, deaths, rho, v);
+  });
+
+  // ---------- Animación meteorito (con rastro) ----------
+  function animateMeteor(target, d, a, E, crater_m, blast_km, thermal_km, seismic_km, deaths, rho, v){
+    const startLat = target.lat + 12 * Math.cos(a * Math.PI/180);
+    const startLng = target.lng - 12 * Math.sin(a * Math.PI/180);
+    const meteorRadius = Math.min(35, Math.max(10, d/250));
+    const meteorColor = d < 100 ? '#ff9933' : d < 1000 ? '#ff3300' : '#ffff66';
+    const meteor = L.circleMarker([startLat, startLng], { radius: meteorRadius, color: meteorColor, fillColor:meteorColor, fillOpacity:0.95, weight:1 }).addTo(map);
+    window._layers.push(meteor);
+
+    const steps = 220;
+    let step = 0;
+    const interval = setInterval(()=>{
+      const lat = startLat + (target.lat - startLat) * (step/steps);
+      const lng = startLng + (target.lng - startLng) * (step/steps);
+      meteor.setLatLng([lat, lng]);
+
+      if(step % 6 === 0){
+        const flame = L.circleMarker([lat, lng], { radius: Math.max(2, meteorRadius/6), color:'#ff7a00', fillColor:'#ff3300', fillOpacity:0.9, weight:0 }).addTo(map);
+        window._layers.push(flame);
+        setTimeout(()=>{ try{ map.removeLayer(flame); }catch(e){} }, 900);
+      }
+      if(step >= steps){
+        clearInterval(interval);
+        try{ map.removeLayer(meteor); }catch(e){}
+        let category = 'regional';
+        if(d < 25) category = 'atmosfera';
+        else if(d < 100) category = 'aerea';
+        else if(d < 5000) category = 'regional';
+        else if(d < 10000) category = 'extincion_pasiva';
+        else category = 'extincion_global'; // d capped to 10000
+
+        const ocean = isOcean(target.lat, target.lng);
+        drawImpactWithTerrain(target, crater_m, blast_km, thermal_km, seismic_km, category, ocean, deaths, d);
+        updateInfoPopup(window._lastSim.E, crater_m, blast_km, thermal_km, seismic_km, deaths, rho, d, v, a);
+      }
+      step++;
+    }, 16);
+  }
+
+  // ---------- Dibuja impacto y ajusta visuales según océano / tierra ----------
+  function drawImpactWithTerrain(latlng, crater_m, blast_km, thermal_km, seismic_km, category, ocean, deaths, d){
+    const craterCircle = L.circle(latlng, { radius: Math.max(50, crater_m/2), color:'#222', fillColor:'#111', fillOpacity:0.9 }).addTo(map);
+    window._layers.push(craterCircle);
+
+    let finalDeaths = deaths;
+    let terrainMsg = '';
+    let tsunamiHeight = 0;
+
+    if (ocean) {
+      const E_J = window._lastSim?.E || window._lastSim?.E_J || 0;
+      tsunamiHeight = Math.min(0.14 * Math.pow(Math.max(1,E_J), 0.25), 500); // Ward & Asphaug approximation (cap)
+      finalDeaths = Math.round(deaths * 0.10); // heurístico: menos muertes si cae en mar abierto
+      terrainMsg = `🌊 Impacto oceánico: posible generación de tsunamis (altura en costa cercana estimada: ${tsunamiHeight.toFixed(1)} m).`;
+    } else {
+      terrainMsg = '🌋 Impacto terrestre: incendios, sismos y polvo atmosférico a gran escala.';
+    }
+
+    if(ocean){
+      const shock = L.circle(latlng, { radius: Math.min(blast_km*1000, 20000000), color:'#0055cc', fillColor:'#99ccff', fillOpacity:0.18 }).addTo(map);
+      const tsunami = L.circle(latlng, { radius: Math.min(blast_km*1600, 20000000), color:'#004488', fillColor:'#0066aa', fillOpacity:0.06 }).addTo(map);
+      const seismic = L.circle(latlng, { radius: Math.min(seismic_km*1000, 20000000), color:'#666', fillColor:'#aaa', fillOpacity:0.08 }).addTo(map);
+      window._layers.push(shock, tsunami, seismic);
+
+      if(tsunamiHeight > 1 && blast_km > 1){
+        animateTsunamiWave(latlng, Math.min(blast_km*1200, 8000000), Math.min(6, Math.max(2, Math.round(tsunamiHeight/8))));
+      }
+    } else {
+      const heat = L.circle(latlng, { radius: Math.min(thermal_km*1000, 20000000), color:'#ff3300', fillColor:'#ff9933', fillOpacity:0.22 }).addTo(map);
+      const shock = L.circle(latlng, { radius: Math.min(blast_km*1000, 20000000), color:'#b30000', fillColor:'#ffcccc', fillOpacity:0.14 }).addTo(map);
+      const seismic = L.circle(latlng, { radius: Math.min(seismic_km*1000, 20000000), color:'#666', fillColor:'#bbb', fillOpacity:0.12 }).addTo(map);
+      window._layers.push(heat, shock, seismic);
+
+      const smoke = L.circle(latlng, { radius: Math.min(crater_m*3, 20000000), color:'#333', fillColor:'#333', fillOpacity:0.45 }).addTo(map);
+      window._layers.push(smoke);
+      setTimeout(()=>{ try{ map.removeLayer(smoke); }catch(e){} }, 5000);
+    }
+
+    let msg = '';
+    if(category === 'atmosfera'){
+      msg = '☁️ El meteorito se desintegró en la atmósfera sin daños significativos.';
+    } else if(category === 'aerea'){
+      msg = ocean ? '💥 Explosión aérea sobre el mar: vapor y ondas menores.' : '💥 Explosión aérea sobre tierra: rotura de vidrios y daños leves.';
+    } else if(category === 'regional'){
+      msg = ocean ? `🌊 Tsunami regional con olas estimadas de ${tsunamiHeight.toFixed(1)} m. Pérdidas estimadas: ${finalDeaths.toLocaleString()} personas.` : `🔴 Impacto devastador terrestre: aproximadamente ${finalDeaths.toLocaleString()} víctimas.`;
+    } else if(category === 'extincion_pasiva'){
+      msg = ocean ? '🌋 Extinción pasiva oceánica: alteración climática y daño masivo a ecosistemas marinos.' : '🌋 Extinción pasiva terrestre: polvo estratosférico, enfriamiento global y colapso regional.';
+    } else {
+      msg = '🌍 EXTINCIÓN GLOBAL: colapso planetario total, pérdida masiva de vida en meses.';
+    }
+
+    showImpactMessage(`${terrainMsg}\n${msg}`, category);
+
+    if(category === 'extincion_pasiva' || category === 'extincion_global'){
+      showDustLayer((category === 'extincion_global') ? 3000 : 2000);
+    }
+
+    if(category === 'extincion_global'){
+      triggerGlobalFlashAndShake();
+    }
+  }
+
+  // ---------- animación simple de tsunami (visual) ----------
+  function animateTsunamiWave(centerLatLng, maxRadiusMeters, pulses = 3){
+    let pulseIndex = 0;
+    const interval = setInterval(()=>{
+      pulseIndex++;
+      const ring = L.circle(centerLatLng, { radius: 1000, color:'#1e90ff', weight:2, fillColor:'#66b3ff', fillOpacity:0.06, className:'tsunami-marker' }).addTo(map);
+      window._layers.push(ring);
+      let r = 1000;
+      const grow = setInterval(()=>{
+        r += maxRadiusMeters / 80;
+        try{ ring.setRadius(Math.min(r, maxRadiusMeters)); }catch(e){}
+        if(r >= maxRadiusMeters){
+          clearInterval(grow);
+          setTimeout(()=>{ try{ map.removeLayer(ring); }catch(e){} }, 1200);
+        }
+      }, 30);
+      if(pulseIndex >= pulses) clearInterval(interval);
+    }, 450);
+  }
+
+  // ---------- Mensaje centrado ----------
+  function showImpactMessage(text, category){
+    impactMessage.style.display = 'block';
+    impactMessage.textContent = text;
+    if(category === 'atmosfera') impactMessage.style.background = 'rgba(43,130,184,0.85)';
+    else if(category === 'aerea') impactMessage.style.background = 'rgba(255,140,51,0.92)';
+    else if(category === 'regional') impactMessage.style.background = 'rgba(217,57,57,0.92)';
+    else if(category === 'extincion_pasiva') impactMessage.style.background = 'rgba(140,90,30,0.92)';
+    else impactMessage.style.background = 'rgba(0,0,0,0.85)';
+    setTimeout(()=>{ impactMessage.style.display = 'none'; }, 9000);
+  }
+
+  // ---------- Flash + Shake + Dust ----------
+  function triggerGlobalFlashAndShake(){
+    flash.style.background = 'white';
+    flash.style.opacity = '1';
+    document.documentElement.classList.add('shake');
+    setTimeout(()=>{ flash.style.background = 'rgba(160,0,0,1)'; }, 900);
+    setTimeout(()=>{ flash.style.opacity = '0'; document.documentElement.classList.remove('shake'); }, 3400);
+  }
+  function showDustLayer(durationMs = 3000){
+    dustLayer.style.display = 'block';
+    setTimeout(()=> dustLayer.style.opacity = '1', 40);
+    setTimeout(()=> { dustLayer.style.opacity = '0'; setTimeout(()=> dustLayer.style.display = 'none', 600); }, durationMs);
+  }
+
+  // ---------- Info popup toggle ----------
+  worldBtn.addEventListener('click', ()=>{
+    infoPopup.style.display = infoPopup.style.display === 'block' ? 'none' : 'block';
+    hint.style.display = 'none';
+  });
+
+  // ---------- Update info popup with data (incluye tsunami si aplica) ----------
+  function updateInfoPopup(E_J, crater_m, blast_km, thermal_km, seismic_km, deaths, rho, d, v, a){
+    const E_mt = (E_J || window._lastSim?.E || 0) / J_PER_MEGATON;
+    const crater_km = crater_m / 1000;
+    const sim = window._lastSim || {};
+    const ocean = isOcean(sim.lat || 0, sim.lng || 0);
+    const terrainTxt = ocean ? 'Océano (posible tsunami)' : 'Tierra firme';
+    const adjDeaths = ocean ? Math.round((deaths || sim.deaths || 0) * 0.10) : (deaths || sim.deaths || 0);
+    let tsunamiHeight = 0;
+    if (ocean && (sim.E || sim.E_J)) tsunamiHeight = Math.min(0.14 * Math.pow(Math.max(1,(sim.E || sim.E_J)), 0.25), 500);
+
+    infoPopup.innerHTML = `
+      <h3>📘 Informe de impacto</h3>
+      <b>🌍 Terreno:</b> ${terrainTxt}<br>
+      <b>🇵🇲 País (si aplica):</b> ${sim.country || 'No determinado / Océano'}<br>
+      <b>🌡 Tipo de cuerpo:</b> ${getTypeNameByDensity(rho)}<br>
+      <b>⚙ Ángulo de entrada:</b> ${a.toFixed(1)}°<br><br>
+
+      <b>💥 Energía liberada:</b> ${E_mt.toLocaleString(undefined,{maximumFractionDigits:2})} megatones TNT<br>
+      <b>🔩 Masa estimada:</b> ${(sim.m/1e9 || 0).toFixed(2)} x10⁹ kg<br>
+      <b>🕳 Cráter estimado:</b> ${crater_km.toFixed(2)} km de diámetro<br><br>
+
+      <b>🌊 Radio de onda (km):</b> ${blast_km.toFixed(2)}<br>
+      <b>🔥 Radio térmico (km):</b> ${thermal_km.toFixed(2)}<br>
+      <b>🌎 Radio sísmico (km):</b> ${seismic_km.toFixed(2)}<br>
+      ${ocean ? `<b>🌊 Altura estimada del tsunami en costas cercanas:</b> ${tsunamiHeight.toFixed(1)} m<br>` : ''}
+      <br>
+      <b>☠️ Víctimas estimadas (basadas en densidad del país):</b> ${adjDeaths.toLocaleString()} personas<br>
+      <b>🧭 Fuente densidad:</b> World Bank (EN.POP.DNST) / reverse geocode Nominatim. <br>
+      <b>🧾 Notas:</b> Estimaciones conservadoras basadas en modelos Purdue/USGS y Ward & Asphaug para tsunamis.<br>
+    `;
+  }
+
+  function getTypeNameByDensity(rho){
+    for(const k in TYPE_DATA) if(TYPE_DATA[k].density === rho) return TYPE_DATA[k].name;
+    return 'Material';
+  }
+
+  // ---------- Helpers: update slider labels ----------
+  ['diam','vel','ang'].forEach(id=>{
+    const el = document.getElementById(id);
+    const val = document.getElementById(id+'Val');
+    if(el) el.addEventListener('input', ()=>{ if(val) val.textContent = el.value; });
+  });
+
+  // Texto inicial de infoPopup
+  infoPopup.innerHTML = `<h3>📘 Información científica</h3>
+    <p><b>Orbital Mechanics:</b> Modela la trayectoria con elementos Keplerianos (semieje, excentricidad, anomalía verdadera).</p>
+    <p><b>Impact Energy:</b> Energía cinética calculada a partir de masa (según densidad y tamaño) y velocidad. Convertida a megatones TNT.</p>
+    <p><b>Crater Scaling:</b> Estimaciones empíricas conservadoras basadas en energía.</p>
+    <p><b>Environmental Effects:</b> Tsunamis (si impacto oceánico), onda de choque, térmico y sísmico. Datos orientativos (USGS/Purdue/Ward & Asphaug).</p>`;
+
+  </script>
+</body>
+</html>
