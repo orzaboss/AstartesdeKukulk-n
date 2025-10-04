@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Mitigación de Asteroides</title>
-    <link rel="stylesheet" href="Mitigación.css">
+    <link rel="stylesheet" href="/css/Mitigación.css">
 </head>
 <body>
     <div class="container">
@@ -17,8 +17,17 @@
             <!-- Columna izquierda: Selección de asteroide -->
             <div class="section">
                 <h2>Selección de Asteroide</h2>
-                <div class="asteroid-list" id="asteroidList"></div>
-                <div class="asteroid-details" id="asteroidDetails"></div>
+                <div class="input-group">
+                    <label for="selectAsteroid">Selecciona un Asteroide</label>
+                    <select id="selectAsteroid" onchange="handleAsteroidSelection()">
+                        <option value="real">Asteroide Real</option>
+                        <option value="create">Crear Asteroide</option>
+                    </select>
+                </div>
+
+                <!-- Si seleccionan "real", muestran los asteroides disponibles -->
+                <div id="asteroidList" class="asteroid-list"></div>
+                <div id="asteroidDetails" class="asteroid-details"></div>
             </div>
 
             <!-- Columna central: Frame para visualización -->
@@ -43,6 +52,29 @@
             </div>
         </div>
 
+        <!-- Estrategias de Mitigación -->
+        <div class="mitigation-section">
+            <h2>Estrategias de Mitigación</h2>
+            <div class="strategy-list">
+                <div class="strategy-card" onclick="selectMitigation('impactador')">
+                    <h3>Impactador Cinético</h3>
+                    <p>Simula un impacto de alta velocidad para desviar el asteroide.</p>
+                </div>
+                <div class="strategy-card" onclick="selectMitigation('tractor')">
+                    <h3>Tractor Gravitacional</h3>
+                    <p>Utiliza un campo gravitacional para alterar la trayectoria del asteroide.</p>
+                </div>
+                <div class="strategy-card" onclick="selectMitigation('laser')">
+                    <h3>Ablación Láser</h3>
+                    <p>Usa energía láser para desintegrar o desviar el asteroide.</p>
+                </div>
+                <div class="strategy-card" onclick="selectMitigation('nuclear')">
+                    <h3>Explosión Nuclear</h3>
+                    <p>Una detonación nuclear para destruir o desviar el asteroide.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Sección de resultados debajo -->
         <div class="results-section">
             <h2>Estrategias de Mitigación</h2>
@@ -53,3 +85,6 @@
     <script src="script.js"></script>
 </body>
 </html>
+
+
+
