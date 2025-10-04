@@ -3,7 +3,7 @@ import math
 
 def buscar_asteroide(nombre):
     api_key = "Nxvxz1N0ARXVVH9oNBdI8uQXtZiF9pLTdhIxD29B"  # Reemplaza con tu API Key de la NASA
-    url = f"https://api.nasa.gov/neo/rest/v1/neo/browse?api_key={api_key}"
+    url = f"https://api.nasa.gov/neo/rest/v1/neo/browse?api_key=Nxvxz1N0ARXVVH9oNBdI8uQXtZiF9pLTdhIxD29B"
     
     response = requests.get(url)
     if response.status_code != 200:
