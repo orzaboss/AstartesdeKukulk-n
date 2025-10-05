@@ -2,7 +2,7 @@ import requests
 import json
 
 def consultar_neo_ws():
-    nasa_api_key = "Nxvxz1N0ARXVVH9oNBdI8-----------------------------uQXtZiF9pLTdhIxD29B"  
+    nasa_api_key = "Nxvxz1N0ARXVVH9oNBdI8------------------------------uQXtZiF9pLTdhIxD29B"  
     url_nasa = f"https://api.nasa.gov/neo/rest/v1/feed?start_date=2025-10-01&end_date=2025-10-03&api_key=Nxvxz1N0ARXVVH9oNBdI8uQXtZiF9pLTdhIxD29B"
     
     response = requests.get(url_nasa)
