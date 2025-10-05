@@ -1,4 +1,5 @@
 /* -----------------------
+   SCRIPT.JS - COMPLETO
 -------------------------*/
 
 /* ---------- Estado ---------- */
@@ -28,6 +29,7 @@ function fmt(value, unit = '', decimals = 2) {
   if (abs < 0.01 && abs > 0) options.maximumFractionDigits = 6;
   return value.toLocaleString('es-ES', options) + (unit ? (' ' + unit) : '');
 }
+
 function fmtSmart(value, unit) {
   if (unit === 'm') {
     if (Math.abs(value) >= 1000) return fmt(value / 1000, 'km', 2);
@@ -60,6 +62,7 @@ function resizeCanvas() {
 }
 
 window.addEventListener('resize', () => { clearTimeout(window._rv); window._rv = setTimeout(resizeCanvas, 120); });
+
 function drawStarfield() {
   stars = [];
   const count = Math.max(60, Math.floor((canvas.width * canvas.height) / (1200 * 1200) * 100));
@@ -68,6 +71,7 @@ function drawStarfield() {
     stars.push({ x: Math.random() * rect.width, y: Math.random() * rect.height, radius: Math.random() * 1.4 + 0.3, alpha: Math.random() * 0.6 + 0.2 });
   }
 }
+
 function drawInitialCanvas() {
   const rect = canvas.getBoundingClientRect();
   ctx.clearRect(0,0,rect.width,rect.height);
@@ -98,7 +102,7 @@ function init() {
 }
 window.addEventListener('load', init);
 
-/* ---------- UI: fetch endpoints (ACTUALIZADO PARA PHP) ---------- */
+/* ---------- UI: fetch endpoints (ACTUALIZADO PARA HOSTINGER / Mitigaciones) ---------- */
 async function loadNeos(query='') {
   const select = document.getElementById('neoSelect');
   select.disabled = true;
@@ -110,11 +114,12 @@ async function loadNeos(query='') {
     return;
   }
   try {
-    // Cambio: apunta a api.php
-    const resp = await fetch(`api.php?query=${encodeURIComponent(query)}`);
+    // URL absoluta al endpoint en tu hosting (Mitigaciones/api/neos)
+    const endpoint = 'https://uinik.com.mx/Mitigaciones/api/neos?query=' + encodeURIComponent(query);
+    const resp = await fetch(endpoint);
     if (!resp.ok) throw new Error('Respuesta no OK: ' + resp.status);
     const list = await resp.json();
-    asteroids = Array.isArray(list) ? list : [];
+    asteroids = Array.isArray(list) ? list : (list.data && Array.isArray(list.data) ? list.data : []);
     select.innerHTML = '';
     if (asteroids.length === 0) {
       const opt = document.createElement('option'); opt.text = 'No se encontraron resultados'; opt.disabled = true;
@@ -124,8 +129,8 @@ async function loadNeos(query='') {
     }
     asteroids.forEach((n) => {
       const opt = document.createElement('option');
-      opt.value = n.id || n.name;
-      opt.text = `${n.name} ${n.diameter_m ? `• ${Math.round(n.diameter_m)} m` : ''} ${n.is_hazardous ? '⚠️' : ''}`;
+      opt.value = n.id || n.neo_reference_id || n.name;
+      opt.text = `${n.name} ${n.diameter_m ? `• ${Math.round(n.diameter_m)} m` : ''} ${n.is_potentially_hazardous_asteroid || n.is_hazardous ? '⚠️' : ''}`;
       select.appendChild(opt);
     });
     select.disabled = false;
@@ -139,19 +144,22 @@ async function loadNeos(query='') {
 
 async function fetchNeoDetailAndSelect(id) {
   try {
-    // Cambio: apunta a api.php con parámetro id
-    const resp = await fetch(`api.php?id=${encodeURIComponent(id)}`);
+    // Endpoint absoluto para detalle (se asume que tu endpoint acepta ?id=ID y devuelve JSON similar a la API NASA)
+    const endpoint = 'https://uinik.com.mx/Mitigaciones/api/neos?id=' + encodeURIComponent(id);
+    const resp = await fetch(endpoint);
     if (!resp.ok) throw new Error('NEO no encontrado: ' + resp.status);
     const detail = await resp.json();
+    // algunos endpoints devuelven el objeto directamente; otros un wrapper
+    const d = (detail && detail.id) ? detail : (detail.data && detail.data[0]) ? detail.data[0] : detail;
     const asteroid = {
-      id: detail.id || detail.neo_reference_id || detail.name,
-      name: detail.name || ('NEO ' + id),
-      diameter: detail.estimated_diameter_m || 0,
-      velocity: (detail.approach && detail.approach.velocity_km_s ? detail.approach.velocity_km_s * 1000 : 0),
-      mass: detail.mass_kg || 0,
-      density: detail.density_kg_m3 || 2000,
-      material: detail.material || 'desconocido',
-      analysis: detail.analysis || null
+      id: d.id || d.neo_reference_id || d.name || id,
+      name: d.name || ('NEO ' + id),
+      diameter: (d.estimated_diameter && d.estimated_diameter.meters) ? ((d.estimated_diameter.meters.estimated_diameter_min + d.estimated_diameter.meters.estimated_diameter_max)/2) : (d.diameter_m || 0),
+      velocity: (d.close_approach_data && d.close_approach_data[0] && d.close_approach_data[0].relative_velocity && d.close_approach_data[0].relative_velocity.kilometers_per_second) ? (parseFloat(d.close_approach_data[0].relative_velocity.kilometers_per_second) * 1000) : (d.velocity || 0),
+      mass: d.mass_kg || d.mass || 0,
+      density: d.density_kg_m3 || 2000,
+      material: d.material || 'desconocido',
+      analysis: d.analysis || null
     };
     selectAsteroid(asteroid, null);
     const detailsEl = document.getElementById('asteroidDetails');
@@ -222,6 +230,7 @@ function calculateKineticImpact(asteroid, timeSeconds) {
     deltaV, deviation, earthRadii, timeSecondsUsed: timeSeconds
   };
 }
+
 function calculateGravitationalTractor(asteroid, timeSeconds) {
   const spacecraftMass = 20000;
   const operationDistance = 100;
@@ -238,6 +247,7 @@ function calculateGravitationalTractor(asteroid, timeSeconds) {
     deltaV, deviation, earthRadii, timeSecondsUsed: timeSeconds
   };
 }
+
 function calculateLaserAblation(asteroid, timeSeconds) {
   const laserPower = 1e6;
   const matProps = materialProperties[asteroid.material] || materialProperties["silicato"];
@@ -254,6 +264,7 @@ function calculateLaserAblation(asteroid, timeSeconds) {
     deltaV, deviation, earthRadii, timeSecondsUsed: timeSeconds
   };
 }
+
 function calculateIonBeam(asteroid, timeSeconds) {
   const beamPower = 5e5;
   const matProps = materialProperties[asteroid.material] || materialProperties["silicato"];
@@ -271,6 +282,7 @@ function calculateIonBeam(asteroid, timeSeconds) {
     deltaV, deviation, earthRadii, timeSecondsUsed: timeSeconds
   };
 }
+
 function calculateNuclearExplosion(asteroid, timeSeconds) {
   const yieldMegatons = 1;
   const yieldJoules = yieldMegatons * 4.184e15;
