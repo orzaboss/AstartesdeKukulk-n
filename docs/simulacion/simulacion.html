@@ -10,7 +10,7 @@
   #map { position:absolute; top:0; bottom:0; right:0; left:0; }
 
   #panel {
-    position:absolute; bottom:10px; left:15px; z-index:1000;
+    position:absolute; top:40px; left:20px; z-index:1000;
     background:rgba(255,255,255,0.97); padding:15px; border-radius:12px;
     width:340px; box-shadow:0 0 14px rgba(0,0,0,0.25);
   }
@@ -42,11 +42,12 @@
   .val { float:right; color:#004a7c; font-weight:bold; font-size:13px; }
 
   #reportBtn {
-    position:absolute; top:10px; right:10px;
+    position:absolute; top:40px; right:110px;
     z-index:2000; background:#0077ff; color:white;
-    border:none; border-radius:50px; padding:10px 18px;
+    border:none; border-radius:5px; padding:10px 18px;
     font-size:14px; font-weight:bold; cursor:pointer;
     display:none; box-shadow:0 0 10px rgba(0,0,0,0.3);
+    width: 140px ;
   }
 
   #flash {
@@ -64,11 +65,11 @@
   .shake { animation:shake 0.6s ease-in-out; }
 
   #reportModal {
-    display:none; position:fixed; top:50%; left:50%;
+    display:none; position:fixed; top:41%; right: -11.3%;
     transform:translate(-50%,-50%);
     background:white; color:#003355;
     padding:20px; border-radius:10px;
-    width:380px; z-index:4000;
+    width:300px; z-index:4000;
     box-shadow:0 0 25px rgba(0,0,0,0.4);
   }
 </style>
@@ -77,7 +78,7 @@
 <div id="map"></div>
 
 <div id="panel">
-  <h1>⚡ ChaacImpact</h1>
+  <h1>ChaacImpact</h1>
   <p class="desc">Crea tu propio asteroide y observa su impacto sobre la Tierra.</p>
 
   <label>Tipo de asteroide</label>
@@ -104,7 +105,7 @@
 
 <button id="reportBtn">📘 Ver informe</button>
 <div id="reportModal">
-  <h3>📊 Reporte de impacto</h3>
+  <h3>Reporte de impacto</h3>
   <pre id="results"></pre>
 </div>
 
@@ -114,6 +115,7 @@
 <script>
 const map = L.map('map', {
   minZoom: 2, maxZoom: 7, worldCopyJump: false,
+  zoomControl: false,
   maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0
 }).setView([20, 0], 3);
 
@@ -186,9 +188,9 @@ function animateMeteor(target,d,a,blast_km,crater_m,rho,v,E,E_mt){
     const flame=L.circleMarker([lat,lng],{radius:2,color:'orange',fillColor:'red',fillOpacity:0.6}).addTo(map);
     setTimeout(()=>map.removeLayer(flame),400);
 
-    if(step===Math.floor(steps*0.25)) showMessage("☄ Ingreso atmosférico detectado...");
-    if(step===Math.floor(steps*0.5)) showMessage("🔥 Trayectoria establecida...");
-    if(step===Math.floor(steps*0.8)) showMessage("⚠️ Impacto inminente...");
+    if (step === Math.floor(steps * 0.03)) showMessage("☄ Ingreso atmosférico detectado...");
+    if (step === Math.floor(steps * 0.35)) setTimeout(() => showMessage("🔥 Trayectoria establecida..."), 360);
+    if (step === Math.floor(steps * 0.76)) setTimeout(() => showMessage("⚠️ Impacto inminente..."), 200);
 
     if(step>=steps){
       clearInterval(interval);
@@ -214,11 +216,11 @@ function showMessage(text){
 function triggerImpact(latlng,crater_m,blast_km,d,E_mt){
   flash.style.opacity=1;
   document.body.classList.add('shake');
-  setTimeout(()=>{flash.style.opacity=0;document.body.classList.remove('shake');},1500);
+  setTimeout(()=>{flash.style.opacity=0;document.body.classList.remove('shake');},3500);
 
-  const crater=L.circle(latlng,{radius:crater_m/2,color:'#222',fillColor:'#111',fillOpacity:0.8}).addTo(map);
+  const crater=L.circle(latlng,{radius:crater_m/2,color:'#222',fillColor:'#111',fillOpacity:0.2}).addTo(map);
   const heat=L.circle(latlng,{radius:blast_km*600,color:'#ff3300',fillColor:'#ff9933',fillOpacity:0.25}).addTo(map);
-  const shock=L.circle(latlng,{radius:blast_km*800,color:'#0066ff',fillColor:'#99ccff',fillOpacity:0.2}).addTo(map);
+  const shock=L.circle(latlng,{radius:blast_km*800,color:'#0066ff',fillColor:'#99ccff',fillOpacity:0.18}).addTo(map);
   window._layers.push(crater,heat,shock);
 
   // Tipo de evento
@@ -229,7 +231,7 @@ function triggerImpact(latlng,crater_m,blast_km,d,E_mt){
   else if(d>=1000){disasters=["Tsunamis locales","Incendios urbanos","Terremotos menores"];}
   else if(d>=100){disasters=["Daños por onda expansiva","Incendios aislados"];}
 
-  showMessage(extinctionType);
+  setTimeout(() => showMessage(extinctionType), 1500);
   reportBtn.style.display='block';
 
   results.textContent=`
