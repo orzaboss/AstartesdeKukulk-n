@@ -4,7 +4,7 @@ from typing import Dict, Optional, Tuple
 
 import requests
 
-API_KEY = "Nxvxz1N0ARXVVH9oNBdI8-----------------------------uQXtZiF9pLTdhIxD29B"
+API_KEY = "Nxvxz1N0ARXVVH9oNBdI8uQXtZiF9pLTdhIxD29B"
 NASA_BASE_URL = "https://api.nasa.gov/neo/rest/v1"
 
 GRAVITY_EARTH = 9.80665  # m/s^2

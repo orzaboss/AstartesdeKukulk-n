@@ -1,0 +1,184 @@
+[
+    {
+        "id": "2000433",
+        "nombre": "433 Eros (A898 PA)",
+        "peligroso": false,
+        "diametro_min_m": 22210.3,
+        "diametro_max_m": 49663.8,
+        "orbita": "AMOR",
+        "acercamiento": {
+            "fecha": "1900-12-27",
+            "velocidad_km_s": "5.5786191875",
+            "distancia_km": "47112732.928149391",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2000719",
+        "nombre": "719 Albert (A911 TB)",
+        "peligroso": false,
+        "diametro_min_m": 2025.6,
+        "diametro_max_m": 4529.4,
+        "orbita": "AMOR",
+        "acercamiento": {
+            "fecha": "1909-08-21",
+            "velocidad_km_s": "3.446029003",
+            "distancia_km": "255628984.355940963",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2000887",
+        "nombre": "887 Alinda (A918 AA)",
+        "peligroso": false,
+        "diametro_min_m": 4597.9,
+        "diametro_max_m": 10281.1,
+        "orbita": "AMOR",
+        "acercamiento": {
+            "fecha": "1974-01-04",
+            "velocidad_km_s": "7.095973685",
+            "distancia_km": "20461808.703836132",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001036",
+        "nombre": "1036 Ganymed (A924 UB)",
+        "peligroso": false,
+        "diametro_min_m": 38775.3,
+        "diametro_max_m": 86704.2,
+        "orbita": "AMOR",
+        "acercamiento": {
+            "fecha": "1910-02-25",
+            "velocidad_km_s": "6.3038664111",
+            "distancia_km": "292651826.173281699",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001221",
+        "nombre": "1221 Amor (1932 EA1)",
+        "peligroso": false,
+        "diametro_min_m": 892.4,
+        "diametro_max_m": 1995.4,
+        "orbita": "AMOR",
+        "acercamiento": {
+            "fecha": "1908-03-14",
+            "velocidad_km_s": "10.7701740589",
+            "distancia_km": "27512874.494038238",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001566",
+        "nombre": "1566 Icarus (1949 MA)",
+        "peligroso": true,
+        "diametro_min_m": 1313.9,
+        "diametro_max_m": 2937.9,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1902-06-11",
+            "velocidad_km_s": "27.0080561011",
+            "distancia_km": "12638658.792139494",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001580",
+        "nombre": "1580 Betulia (1950 KA)",
+        "peligroso": false,
+        "diametro_min_m": 3180.9,
+        "diametro_max_m": 7112.8,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1929-06-09",
+            "velocidad_km_s": "11.3576547268",
+            "distancia_km": "276689988.329132605",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001620",
+        "nombre": "1620 Geographos (1951 RA)",
+        "peligroso": true,
+        "diametro_min_m": 2347.2,
+        "diametro_max_m": 5248.6,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1901-08-23",
+            "velocidad_km_s": "11.7628115427",
+            "distancia_km": "5071250.986983104",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001627",
+        "nombre": "1627 Ivar (1929 SH)",
+        "peligroso": false,
+        "diametro_min_m": 7354.5,
+        "diametro_max_m": 16445.2,
+        "orbita": "AMOR",
+        "acercamiento": {
+            "fecha": "1929-07-19",
+            "velocidad_km_s": "6.5498704866",
+            "distancia_km": "24911350.809696372",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001685",
+        "nombre": "1685 Toro (1948 OA)",
+        "peligroso": false,
+        "diametro_min_m": 3703.0,
+        "diametro_max_m": 8280.2,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1908-08-04",
+            "velocidad_km_s": "16.1350821461",
+            "distancia_km": "26483636.645542351",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001862",
+        "nombre": "1862 Apollo (1932 HA)",
+        "peligroso": true,
+        "diametro_min_m": 1616.4,
+        "diametro_max_m": 3614.4,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1911-01-29",
+            "velocidad_km_s": "11.6407136972",
+            "distancia_km": "9839828.726759549",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2001981",
+        "nombre": "1981 Midas (1973 EA)",
+        "peligroso": true,
+        "diametro_min_m": 2368.9,
+        "diametro_max_m": 5297.1,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1916-09-24",
+            "velocidad_km_s": "31.4029234455",
+            "distancia_km": "23199847.011899491",
+            "cuerpo": "Earth"
+        }
+    },
+    {
+        "id": "2002063",
+        "nombre": "2063 Bacchus (1977 HB)",
+        "peligroso": false,
+        "diametro_min_m": 960.6,
+        "diametro_max_m": 2148.0,
+        "orbita": "APOLLO",
+        "acercamiento": {
+            "fecha": "1903-03-06",
+            "velocidad_km_s": "10.3891121599",
+            "distancia_km": "9959874.764243583",
+            "cuerpo": "Earth"
+        }
+    }
+]
