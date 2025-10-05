@@ -1,0 +1,33 @@
+# .htaccess - el subdirectorio /Mitigación/
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /Mitigación/
+    
+    # Redirigir /Mitigación/api/neos a api.php
+    RewriteRule ^api/neos$ api.php [QSA,L]
+    
+    # Redirigir /Mitigación/api/neo/[id] a api.php con parámetro id
+    RewriteRule ^api/neo/(.+)$ api.php?id=$1 [QSA,L]
+    
+    # Página principal - index.html por defecto
+    DirectoryIndex index.html
+    
+    # Si el archivo no existe, mostrar index.html
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^$ index.html [L]
+</IfModule>
+
+# Habilitar compresión para mejor rendimiento
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Cache para archivos estáticos
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
