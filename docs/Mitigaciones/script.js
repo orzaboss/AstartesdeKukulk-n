@@ -18,6 +18,9 @@ const materialProperties = {
   "metálico": { ablationEfficiency: 0.15, ionEfficiency: 0.22, exhaustVelocity: 35000 }
 };
 
+// ---------- API base (ajústalo si hace falta) ----------
+const API_BASE = window.location.origin + '/Mitigaciones/api/neos'; // detecta host y apunta al folder Mitigaciones
+
 /* ---------- Helpers de formato ---------- */
 function fmt(value, unit = '', decimals = 2) {
   if (value === null || value === undefined) return '';
@@ -114,12 +117,16 @@ async function loadNeos(query='') {
     return;
   }
   try {
-    // URL absoluta al endpoint en tu hosting (Mitigaciones/api/neos)
-    const endpoint = 'https://uinik.com.mx/Mitigaciones/api/neos?query=' + encodeURIComponent(query);
+    // Usamos API_BASE definido arriba
+    const endpoint = `${API_BASE}?query=${encodeURIComponent(query)}`;
     const resp = await fetch(endpoint);
     if (!resp.ok) throw new Error('Respuesta no OK: ' + resp.status);
     const list = await resp.json();
-    asteroids = Array.isArray(list) ? list : (list.data && Array.isArray(list.data) ? list.data : []);
+    // Normalizar distintas formas de respuesta (array, {data:[]}, {near_earth_objects:[]})
+    asteroids = Array.isArray(list) ? list
+                : (list.data && Array.isArray(list.data) ? list.data
+                : (list.near_earth_objects && Array.isArray(list.near_earth_objects) ? list.near_earth_objects
+                : []));
     select.innerHTML = '';
     if (asteroids.length === 0) {
       const opt = document.createElement('option'); opt.text = 'No se encontraron resultados'; opt.disabled = true;
@@ -144,13 +151,13 @@ async function loadNeos(query='') {
 
 async function fetchNeoDetailAndSelect(id) {
   try {
-    // Endpoint absoluto para detalle (se asume que tu endpoint acepta ?id=ID y devuelve JSON similar a la API NASA)
-    const endpoint = 'https://uinik.com.mx/Mitigaciones/api/neos?id=' + encodeURIComponent(id);
+    // Endpoint absoluto usando API_BASE
+    const endpoint = `${API_BASE}?id=${encodeURIComponent(id)}`;
     const resp = await fetch(endpoint);
     if (!resp.ok) throw new Error('NEO no encontrado: ' + resp.status);
     const detail = await resp.json();
-    // algunos endpoints devuelven el objeto directamente; otros un wrapper
-    const d = (detail && detail.id) ? detail : (detail.data && detail.data[0]) ? detail.data[0] : detail;
+    // Manejar distintos wrappers
+    const d = (detail && detail.id) ? detail : (detail.data && Array.isArray(detail.data) ? detail.data[0] : (detail.near_earth_objects && Array.isArray(detail.near_earth_objects) ? detail.near_earth_objects[0] : detail));
     const asteroid = {
       id: d.id || d.neo_reference_id || d.name || id,
       name: d.name || ('NEO ' + id),
