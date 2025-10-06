@@ -1,0 +1,83 @@
+<!DOCTYPE html> 
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Calculadora de Mitigación de Asteroides (Frontend)</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>☄️ Calculadora de Mitigación </h1>
+      <p class="subtitle">Busca NEOs desde el backend Node/Express y visualiza estrategias</p>
+    </header>
+
+    <div class="main-layout">
+      <!-- LEFT: búsqueda y listado -->
+      <div class="panel">
+        <h2 class="small">Buscar asteroide</h2>
+
+        <label for="searchQuery">Nombre o fragmento</label>
+        <input id="searchQuery" type="text" placeholder="ej. Apophis, Bennu, 433" />
+
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button id="searchBtn" style="flex:1">🔎 Buscar</button>
+          <button id="clearBtn" style="flex:0 0 110px; background:linear-gradient(90deg,#9e9e9e,#7a7a7a);">Limpiar</button>
+        </div>
+
+        <label style="margin-top:12px" for="neoSelect">Resultados</label>
+        <select id="neoSelect" size="8" style="width:100%; height:220px;"></select>
+
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button id="loadDetailBtn" style="flex:1">📥 Cargar detalle</button>
+          <button id="openInfoBtn" style="flex:0 0 110px; background:linear-gradient(90deg,#2b6fd0,#1860b0)">Info</button>
+        </div>
+
+        <h3 style="margin-top:12px;color:#bfe1ff">Asteroide seleccionado</h3>
+        <div id="asteroidDetails" style="min-height:90px; color:#cfe9ff; margin-top:8px;">Ninguno</div>
+      </div>
+
+      <!-- MIDDLE: visualización -->
+      <div class="visualization-frame panel">
+        <canvas id="vizCanvas" aria-label="Visualización de trayectorias"></canvas>
+        <div class="viz-overlay" id="vizInfo">Selecciona un asteroide y calcula estrategias</div>
+        <div class="viz-legend">
+          <div style="font-weight:700;margin-bottom:6px">Leyenda</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(90deg,#6fb5ff,#2e78ff);border:2px dashed rgba(74,158,255,0.6)"></div>Trayectoria original</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:linear-gradient(90deg,#00ff88,#1fbf6b)"></div>Trayectoria desviada</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ff9500;height:10px;width:10px;border-radius:50%"></div>Asteroide</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#5ea8ff;height:10px;width:10px;border-radius:50%"></div>Tierra</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: parámetros y calcular -->
+      <div class="panel">
+        <h2 class="small">Parámetros de Misión</h2>
+
+        <label for="warningTime">⏱️ Tiempo de Advertencia (años)</label>
+        <input id="warningTime" type="number" value="10" min="0.1" step="0.1" />
+
+        <label for="distance" style="margin-top:8px">📏 Distancia al Impacto (UA)</label>
+        <input id="distance" type="number" value="1.5" min="0.01" step="0.01" />
+
+        <div style="margin-top:12px;">
+          <button id="calcBtn" style="width:100%">🚀 Calcular Estrategias</button>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="small">Resumen</div>
+          <div id="resultsSummary" class="muted" style="margin-top:6px">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
+      <h2 class="small">Estrategias de Mitigación</h2>
+      <div id="resultsGrid" class="results-grid"></div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>

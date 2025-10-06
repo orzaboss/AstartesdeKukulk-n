@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChaacImpact</title>
+   <link rel="icon" type="png" href="assets/Logo.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  </style>
+</head>
+
+<body class="text-white bg-black overflow-x-hidden">
+
+  <!-- NAVBAR (fija, grande) -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-black/35 backdrop-blur-md">
+    <nav class="max-w-7xl mx-auto flex items-center justify-between px-6 lg:px-8 py-2">
+      <!-- Logo + nombre -->
+      <div class="flex items-center gap-4">
+        <a href="index.html#inicio"><img src="/assets/Logo.png" alt="ChaacImpact" class="ml-2 w-20 h-20 select-none" /></a>
+      </div>
+      <!-- Links -->
+      <ul class="hidden md:flex items-center gap-16">
+        <li><a href="index.html#inicio" class="mr-14 text-lg lg:text-xl font-semibold hover:text-violet-300">Inicio</a></li>
+        <li><a href="index.html#mitigacion" class="mr-9 text-lg lg:text-xl font-semibold hover:text-violet-300">Mitigación</a></li>
+        <li><a href="index.html#impacto" class="mr-9 text-lg lg:text-xl font-semibold hover:text-violet-300">Impacto</a></li>
+        <li><a href="index.html#asteroides" class="mr-9 text-lg lg:text-xl font-semibold hover:text-violet-300">Simulación</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ====== DESICIÓN ====== -->
+    <section
+      id="asteroides"
+      class="relative pt-14 min-h-screen flex flex-col justify-center items-center text-center px-10 bg-cover bg-center"
+      style="background-image: url('/assets/fondo.jpg')"
+    >
+      <div class="absolute inset-0 bg-gradient-to-b"></div>
+      <div class="relative z-10 flex flex-col md:flex-row gap-20">
+        <!-- Real -->
+        <div class="bg-purple-900/40 rounded-2xl p-6 w-64 hover:scale-105 transition">
+          <h3 class="text-lg font-bold mb-4">Proteger</h3>
+          <img src="/assets/mitigaciones.png" alt="Asteroide real" class="mx-auto w-64 mb-4 text"/>
+          <button class="bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded-md font-semibold text-sm text-center">
+            <a href="/Mitigaciones/index.html">Seleccionar</a>
+          </button>
+        </div>
+
+        <!-- Crea el tuyo -->
+        <div class="bg-blue-900/40 rounded-2xl p-6 w-64 hover:scale-105 transition">
+          <h3 class="text-lg font-bold mb-4">Destruir</h3>
+          <img src="/assets/impacto.png" alt="Asteroide personalizado" class="mx-auto w-64 mb-4" />
+          <button class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md font-semibold text-sm">
+            <a href="/DATOSREALES/index.html">Seleccionar</a>
+          </button>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

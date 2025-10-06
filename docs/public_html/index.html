@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChaacImpact</title>
+  <link rel="icon" type="png" href="assets/Logo.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    #menu.mobile-hidden { display: none; }
+    @media (min-width: 768px) {
+      #menu.mobile-hidden { display: flex !important; }
+    }
+    body.menu-open { overflow: hidden; }
+    #menu { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+    #menu-icon { transition: transform 0.3s ease; }
+  </style>
+</head>
+
+<body class="text-white bg-black overflow-x-hidden">
+
+  <!-- HEADER -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-md">
+    <nav class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 relative">
+      <a href="#inicio" class="flex items-center gap-3">
+        <img src="/assets/Logo.png" alt="ChaacImpact" class="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 select-none" />
+      </a>
+
+      <!-- Botón hamburguesa -->
+      <button id="menu-toggle" class="md:hidden text-white p-2 transition-transform duration-300 focus:outline-none z-50">
+        <svg id="menu-icon" xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+
+      <!-- Menú -->
+      <ul id="menu"
+          class="mobile-hidden flex-col md:flex md:flex-row md:items-center gap-6 md:gap-12
+                 absolute md:static top-full left-0 w-full md:w-auto 
+                 bg-black/95 md:bg-transparent backdrop-blur-lg md:backdrop-blur-none
+                 text-center md:text-left py-6 md:py-0 
+                 shadow-2xl md:shadow-none border-t border-white/10 md:border-0">
+        <li><a href="#inicio" class="menu-link block text-lg font-semibold hover:text-violet-300 py-3 px-6 md:p-0 transition-colors">Inicio</a></li>
+        <li><a href="#mitigacion" class="menu-link block text-lg font-semibold hover:text-violet-300 py-3 px-6 md:p-0 transition-colors">Mitigación</a></li>
+        <li><a href="#impacto" class="menu-link block text-lg font-semibold hover:text-violet-300 py-3 px-6 md:p-0 transition-colors">Impacto</a></li>
+        <li><a href="#asteroides" class="menu-link block text-lg font-semibold hover:text-violet-300 py-3 px-6 md:p-0 transition-colors">Simulación</a></li>
+        <li><a href="#videojuego" class="menu-link block text-lg font-semibold hover:text-violet-300 py-3 px-6 md:p-0 transition-colors">Videojuego</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- SCRIPT DEL MENÚ -->
+  <script>
+    const btn = document.getElementById('menu-toggle');
+    const icon = document.getElementById('menu-icon');
+    const menu = document.getElementById('menu');
+    const menuLinks = document.querySelectorAll('.menu-link');
+    const body = document.body;
+
+    function openMenu() {
+      menu.classList.remove('mobile-hidden');
+      menu.classList.add('flex');
+      body.classList.add('menu-open');
+      icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />';
+    }
+
+    function closeMenu() {
+      menu.classList.add('mobile-hidden');
+      menu.classList.remove('flex');
+      body.classList.remove('menu-open');
+      icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />';
+    }
+
+    btn.addEventListener('click', () => {
+      menu.classList.contains('mobile-hidden') ? openMenu() : closeMenu();
+    });
+
+    menuLinks.forEach(link => {
+      link.addEventListener('click', () => {
+        if (window.innerWidth < 768) closeMenu();
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 768) closeMenu();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !menu.classList.contains('mobile-hidden')) closeMenu();
+    });
+  </script>
+
+  <!-- SECCIÓN INICIO -->
+  <section id="inicio" class="relative min-h-[100vh] flex items-center justify-center text-center md:text-left"
+           style="background-image:url('/assets/fondo.jpg'); background-size: cover; background-position: center;">
+    <div class="absolute inset-0 bg-black/35"></div>
+
+    <div class="relative z-10 w-full max-w-6xl px-6 sm:px-10 pt-32 md:pt-44">
+      <div class="flex flex-col items-center md:items-start">
+        <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight">ChaacImpact</h1>
+        <p class="mt-5 text-base sm:text-lg md:text-xl max-w-2xl md:max-w-[42rem] leading-relaxed">
+          Esta es una herramienta interactiva que permite simular el impacto de asteroides, predecir sus consecuencias y evaluar estrategias de mitigación usando datos reales de la NASA. Además, incluye un videojuego educativo.
+        </p>
+        <a href="#asteroides" class="mt-8 rounded-full px-8 py-3 text-base md:text-lg font-extrabold
+                                    bg-white/10 hover:bg-white/20 transition shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+          Comenzar
+        </a>
+      </div>
+    </div>
+
+    <!-- Imágenes adaptativas -->
+    <img src="/assets/asteroide.png" alt="" aria-hidden="true"
+         class="absolute z-[5] w-[100px] sm:w-[150px] md:w-[200px] lg:w-[240px]
+                top-[100px] sm:top-[160px] md:top-[200px] lg:top-[220px]
+                right-[10%] sm:right-[20%] md:right-[28%] lg:right-[30%]" />
+    <img src="/assets/tierra.png" alt="" aria-hidden="true"
+         class="absolute z-[4] w-[200px] sm:w-[300px] md:w-[420px] lg:w-[540px]
+                -bottom-[70px] sm:-bottom-[100px] md:-bottom-[160px] lg:-bottom-[180px]
+                -right-[40px] sm:-right-[80px] md:-right-[100px] lg:-right-[130px]" />
+  </section>
+
+  <!-- MITIGACIÓN -->
+  <section id="mitigacion" class="relative w-full px-4 sm:px-6 lg:px-8 py-20 bg-cover bg-center"
+           style="background-image:url('/assets/fondo.jpg');">
+    <div class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-10">
+      <div class="flex-1 text-left">
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-7">Mitigación de Asteroides</h2>
+        <p class="tracking-tight mb-6 leading-relaxed">
+          La mitigación de asteroides busca prevenir impactos potenciales en la Tierra mediante estrategias científicas y tecnológicas.
+        </p>
+        <ul class="list-disc pl-6 space-y-3 text-base sm:text-lg">
+          <li><strong>Impacto Cinético:</strong> Una nave choca con el asteroide para alterar su trayectoria.</li>
+          <li><strong>Tractor gravitacional:</strong> La gravedad de una nave cercana desvía lentamente al asteroide.</li>
+          <li><strong>Ablación láser:</strong> Láseres generan flujo de masa sobre la superficie del asteroide.</li>
+          <li><strong>Explosión nuclear:</strong> Último recurso para desviar objetos grandes.</li>
+        </ul>
+      </div>
+      <div class="flex-1 flex justify-center">
+        <img src="/assets/astronauta.png" alt="Mitigación"
+             class="w-[200px] sm:w-[300px] md:w-[380px] lg:w-[400px] select-none pointer-events-none">
+      </div>
+    </div>
+  </section>
+
+  <!-- IMPACTO -->
+  <section id="impacto" class="relative px-4 sm:px-6 lg:px-8 py-20 bg-cover bg-center"
+           style="background-image:url('/assets/fondo.jpg');">
+    <div class="absolute inset-0 bg-black/40"></div>
+
+    <div class="relative z-10 max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-10">
+      <div class="flex-1 flex justify-center">
+        <img src="/assets/crater.png" alt="Impacto"
+             class="w-[220px] sm:w-[320px] md:w-[420px] lg:w-[500px] pointer-events-none select-none">
+      </div>
+      <div class="flex-1 text-left">
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-7">Impacto de Asteroides</h2>
+        <p class="tracking-tight mb-7 leading-relaxed">
+          Los impactos de asteroides han sido eventos catastróficos capaces de provocar cambios climáticos y destrucción global.
+        </p>
+        <ul class="list-disc pl-6 space-y-3 text-base sm:text-lg">
+          <li><strong>Explosión atmosférica</strong>: desintegración y ondas de choque.</li>
+          <li><strong>Impacto terrestre</strong>: energía comparable a megatones de TNT.</li>
+          <li><strong>Tsunamis</strong>: asteroides en océanos provocan olas gigantes.</li>
+          <li><strong>Incendios masivos</strong> y <strong>cambios climáticos</strong>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIMULADORES -->
+  <section id="asteroides" class="relative pt-20 min-h-screen flex flex-col justify-center items-center text-center px-6 sm:px-10 bg-cover bg-center"
+           style="background-image:url('/assets/fondo.jpg');">
+    <div class="absolute inset-0 bg-black/40"></div>
+    <h1 class="relative z-10 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-10">Simuladores</h1>
+
+    <div class="relative z-10 flex flex-col md:flex-row gap-10 md:gap-20">
+      <div class="bg-purple-900/40 rounded-2xl p-6 w-64 hover:scale-105 transition">
+        <h3 class="text-lg font-bold mb-4">Real</h3>
+        <img src="/assets/real.png" alt="Asteroide real" class="mx-auto w-56 mb-4"/>
+        <a href="miti_impact.html" class="bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded-md font-semibold text-sm block">Seleccionar</a>
+      </div>
+      <div class="bg-blue-900/40 rounded-2xl p-6 w-64 hover:scale-105 transition">
+        <h3 class="text-lg font-bold mb-4">Crea el tuyo</h3>
+        <img src="/assets/silueta.png" alt="Asteroide personalizado" class="mx-auto w-56 mb-4"/>
+        <a href="/simulacion/simulacion.html" class="bg-blue-700 hover:bg-blue-600 px-4 py-2 rounded-md font-semibold text-sm block">Seleccionar</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIDEOJUEGO -->
+  <section id="videojuego" class="relative w-full px-4 sm:px-6 lg:px-8 py-20 bg-cover bg-center"
+         style="background-image:url('/assets/fondo.jpg');">
+  <div class="absolute inset-0 bg-black/40"></div>
+
+  <div class="relative z-10 max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-10 text-white">
+
+    <!-- Texto y botón -->
+    <div class="flex-1 text-center lg:text-left">
+      <h2 class="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-6">¡Defiende la Tierra!</h2>
+      <p class="text-base sm:text-lg md:text-xl leading-relaxed mb-8">
+        Un alienígena ha llegado con una amenaza devastadora: una <strong>lluvia de asteroides</strong> dirigidos hacia la Tierra.<br><br>
+        Tu misión es clara: <strong>utiliza correctamente las estrategias de mitigación</strong> (impacto cinético, láseres, explosiones nucleares, etc.) para interceptarlos.<br><br>
+        Pero cuidado... si eliges mal, los asteroides no serán detenidos.
+      </p>
+      <a href="https://lain09.itch.io/lluvia-de-asteroides"
+         class="inline-block bg-green-600 hover:bg-green-500 transition px-8 py-3 text-lg font-semibold rounded-full shadow-lg">
+        Jugar Ahora
+      </a>
+    </div>
+  </div>
+</section>
+
+
+</body>
+</html>

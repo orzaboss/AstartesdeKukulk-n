@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ChaacImpact — Simulador de Impactos Reales</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; font-family:Segoe UI, Arial, sans-serif; background:#000; }
+  #map { position:absolute; top:0; bottom:0; right:0; left:0; }
+
+  #panel {
+    position:absolute; top:40px; left:20px; z-index:1000;
+    background:rgba(255,255,255,0.97); padding:15px; border-radius:12px;
+    width:340px; box-shadow:0 0 14px rgba(0,0,0,0.25);
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+  
+  @media (max-width: 768px) {
+    #panel {
+      top: 10px; left: 10px; right: 10px;
+      width: auto; max-width: none;
+      padding: 12px;
+      max-height: calc(100vh - 20px);
+    }
+  }
+  
+  @media (max-width: 480px) {
+    #panel {
+      font-size: 14px;
+      padding: 10px;
+    }
+  }
+  
+  h1 { margin:0 0 4px; font-size:20px; color:#004a7c; text-align:center; }
+  p.desc { margin-top:0; font-size:13px; color:#004a7c; text-align:center; }
+  
+  @media (max-width: 480px) {
+    h1 { font-size: 18px; }
+    p.desc { font-size: 12px; }
+  }
+  
+  label { display:block; margin-top:8px; font-weight:600; color:#003355; }
+  input[type=range] {
+    width:100%; margin:5px 0; appearance:none; height:6px;
+    border-radius:3px; background:#cfd8dc; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance:none; width:15px; height:15px; border-radius:50%;
+    background:#0080ff; cursor:pointer;
+  }
+  select, button {
+    width:100%; padding:7px; margin-top:5px;
+    border:1px solid #ccc; border-radius:6px; font-size:14px;
+  }
+  button {
+    background:#0080ff; color:white; font-weight:bold; cursor:pointer;
+    border:none; border-radius:8px; padding:8px;
+  }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
+  pre {
+    background:#f3f8ff; padding:8px; border-radius:6px;
+    font-size:13px; color:#002b55; margin-top:10px; white-space:pre-wrap;
+    max-height:210px; overflow-y:auto;
+  }
+  .val { float:right; color:#004a7c; font-weight:bold; font-size:13px; }
+
+  #reportBtn {
+    position:absolute; top:40px; right:110px;
+    z-index:2000; background:#0077ff; color:white;
+    border:none; border-radius:5px; padding:10px 18px;
+    font-size:14px; font-weight:bold; cursor:pointer;
+    display:none; box-shadow:0 0 10px rgba(0,0,0,0.3);
+    width: 140px;
+  }
+  
+  @media (max-width: 768px) {
+    #reportBtn {
+      top: auto; bottom: 20px; right: 50%;
+      transform: translateX(50%);
+      width: auto;
+      min-width: 160px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    #reportBtn {
+      bottom: 10px;
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+  }
+
+  #flash {
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:white; opacity:0; pointer-events:none; z-index:3000;
+  }
+
+  @keyframes shake {
+    0%,100% { transform:translate(0,0); }
+    20% { transform:translate(-5px, 5px); }
+    40% { transform:translate(5px,-5px); }
+    60% { transform:translate(-5px,-5px); }
+    80% { transform:translate(5px,5px); }
+  }
+  .shake { animation:shake 0.6s ease-in-out; }
+
+  #reportModal {
+    display:none; position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    background:white; color:#003355;
+    padding:20px; border-radius:10px;
+    width:300px; z-index:4000;
+    box-shadow:0 0 25px rgba(0,0,0,0.4);
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  @media (max-width: 480px) {
+    #reportModal {
+      width: 280px;
+      padding: 15px;
+    }
+    #reportModal h3 {
+      font-size: 16px;
+    }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="panel">
+  <h1>⚡ ChaacImpact</h1>
+  <p class="desc">Crea tu propio asteroide y observa su impacto sobre la Tierra.</p>
+
+  <label>Búsqueda de asteroide</label>
+  <input type="text" id="searchInput" placeholder="Nombre o ID del asteroide">
+  <button id="searchBtn">Buscar NEO</button>
+
+  <label>Tipo de asteroide</label>
+  <select id="type">
+    <option value="iron">Hierro — 7800 kg/m³</option>
+    <option value="ordinary">Condrita ordinaria — 3300 kg/m³</option>
+    <option value="carbonaceous">Condrita carbonácea — 2200 kg/m³</option>
+    <option value="stony_iron">Pallasita — 4500 kg/m³</option>
+    <option value="cometary">Cometario — 600 kg/m³</option>
+  </select>
+
+  <label>Diámetro (m) <span class="val" id="diamVal">50</span></label>
+  <input type="range" id="diam" min="1" max="10000" value="50">
+
+  <label>Velocidad (km/s) <span class="val" id="velVal">25</span></label>
+  <input type="range" id="vel" min="10" max="100" value="25">
+
+  <label>Ángulo (°) <span class="val" id="angVal">45</span></label>
+  <input type="range" id="ang" min="15" max="75" value="45">
+
+  <p>Haz clic en el mapa para seleccionar el punto de impacto.</p>
+  <button id="simulate" disabled>Simular impacto</button>
+</div>
+
+<button id="reportBtn">📘 Ver informe</button>
+<div id="reportModal">
+  <h3>Reporte de impacto</h3>
+  <pre id="results"></pre>
+</div>
+
+<div id="flash"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const map = L.map('map', {
+  minZoom: 2, maxZoom: 7, worldCopyJump: false,
+  zoomControl: false,
+  maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0
+}).setView([20, 0], 3);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap'
+}).addTo(map);
+
+let impactMarker=null, impactLatLng=null;
+const simulateBtn=document.getElementById('simulate');
+const results=document.getElementById('results');
+const reportBtn=document.getElementById('reportBtn');
+const reportModal=document.getElementById('reportModal');
+const flash=document.getElementById('flash');
+const searchInput=document.getElementById('searchInput');
+const searchBtn=document.getElementById('searchBtn');
+
+const TYPE_DATA={
+  iron:{density:7800,name:"Hierro"},
+  ordinary:{density:3300,name:"Condrita ordinaria"},
+  carbonaceous:{density:2200,name:"Condrita carbonácea"},
+  stony_iron:{density:4500,name:"Pallasita"},
+  cometary:{density:600,name:"Cometario"}
+};
+
+map.on('click', e=>{
+  if(impactMarker) map.removeLayer(impactMarker);
+  impactLatLng=e.latlng;
+  impactMarker=L.marker(e.latlng).addTo(map).bindPopup("☄ Punto de impacto").openPopup();
+  simulateBtn.disabled=false;
+});
+
+const NASA_API_KEY='Nxvxz1N0ARXVVH9oNBdI8uQXtZiF9pLTdhIxD29B';
+const J_PER_MEGATON=4.184e15;
+const sphereVol=d=>Math.PI/6*Math.pow(d,3);
+const kineticE=(m,v)=>0.5*m*Math.pow(v*1000,2);
+const crater=E=>Math.max(0.5,0.015*Math.pow(E/J_PER_MEGATON,0.33))*1000;
+const blastR=E=>12*Math.pow(E/J_PER_MEGATON,0.33);
+
+function toFloat(val){
+  if(val==null||val==='')return null;
+  const n=Number(val);
+  return isNaN(n)?null:n;
+}
+
+function estimateCompositionAndDensity(neo){
+  const orbital=neo.orbital_data||{};
+  const spectral=(orbital.spectral_type||'').trim().toUpperCase();
+  const albedo=toFloat(orbital.albedo);
+  if(spectral.startsWith('C'))return{description:'carbonaceo (C-type)',density:1500};
+  if(spectral.startsWith('S'))return{description:'rocoso (S-type)',density:3000};
+  if(spectral.startsWith('M'))return{description:'metalico (M-type)',density:5300};
+  if(albedo!=null){
+    if(albedo<0.1)return{description:'carbonaceo (C-type asumido por albedo)',density:1500};
+    if(albedo>0.4)return{description:'metalico (M-type asumido por albedo)',density:5300};
+    return{description:'rocoso (S-type asumido por albedo)',density:3000};
+  }
+  return{description:'rocoso (S-type asumido)',density:3000};
+}
+
+function selectApproach(neo){
+  const approaches=neo.close_approach_data||[];
+  if(!approaches.length)return null;
+  const parsed=[];
+  for(const entry of approaches){
+    const dateStr=entry.close_approach_date;
+    if(!dateStr)continue;
+    const date=new Date(dateStr);
+    if(isNaN(date.getTime()))continue;
+    parsed.push({date,data:entry});
+  }
+  if(!parsed.length)return approaches[0];
+  const today=new Date();
+  const upcoming=parsed.filter(p=>p.date>=today);
+  if(upcoming.length){
+    upcoming.sort((a,b)=>a.date-b.date);
+    return upcoming[0].data;
+  }
+  parsed.sort((a,b)=>b.date-a.date);
+  return parsed[0].data;
+}
+
+function calculateCrater(diameter_km,density,velocity_km_s,angle_deg){
+  if(diameter_km<=0)return{diameter_km:0,radius_km:0,depth_km:0};
+  const angle_rad=angle_deg*Math.PI/180;
+  const velocity_component=velocity_km_s*Math.max(Math.sin(angle_rad),0.1);
+  const crater_diameter_km=1.161*Math.pow(density/2700,1/3)*Math.pow(diameter_km,0.78)*Math.pow(velocity_component,0.44);
+  return{
+    diameter_km:crater_diameter_km,
+    radius_km:crater_diameter_km/2,
+    depth_km:crater_diameter_km*0.2
+  };
+}
+
+function simulateImpact(neo){
+  const diamMeters=neo.estimated_diameter?.meters||{};
+  const dMin=toFloat(diamMeters.estimated_diameter_min)||0;
+  const dMax=toFloat(diamMeters.estimated_diameter_max)||0;
+  const dAvg=dMin&&dMax?(dMin+dMax)/2:Math.max(dMin,dMax);
+  const{description,density}=estimateCompositionAndDensity(neo);
+  const radius_m=dAvg/2;
+  const volume_m3=(4/3)*Math.PI*Math.pow(radius_m,3);
+  const mass_kg=volume_m3*density;
+  const approach=selectApproach(neo);
+  let velocity_km_s=20.0;
+  let distance_km=null;
+  let primary=null;
+  let dateText=null;
+  if(approach){
+    const vStr=approach.relative_velocity?.kilometers_per_second;
+    const missStr=approach.miss_distance?.kilometers;
+    velocity_km_s=toFloat(vStr)||velocity_km_s;
+    distance_km=toFloat(missStr);
+    primary=approach.orbiting_body;
+    dateText=approach.close_approach_date_full||approach.close_approach_date;
+  }
+  const velocity_m_s=velocity_km_s*1000;
+  const energy_j=0.5*mass_kg*Math.pow(velocity_m_s,2);
+  const energy_mt=energy_j/J_PER_MEGATON;
+  const crater=calculateCrater(dAvg/1000,density,velocity_km_s,45);
+  const blast_km=0.32*Math.pow(energy_mt,1/3);
+  const magnitude=energy_j>0?Math.max(0,0.67*Math.log10(energy_j)-5.87):0;
+  return{
+    diameter_avg_m:dAvg,
+    diameter_min_m:dMin,
+    diameter_max_m:dMax,
+    composition:description,
+    density_kg_m3:density,
+    mass_kg:mass_kg,
+    approach_date:dateText,
+    approach_velocity_km_s:velocity_km_s,
+    approach_distance_km:distance_km,
+    approach_primary:primary,
+    impact_angle_deg:45,
+    kinetic_energy_j:energy_j,
+    kinetic_energy_mt:energy_mt,
+    crater:crater,
+    blast_radius_km:blast_km,
+    seismic_magnitude:magnitude
+  };
+}
+
+function simulateCustom(density,diameter_m,velocity_km_s,angle_deg){
+  if(diameter_m<=0||density<=0||velocity_km_s<=0){
+    return{
+      diameter_avg_m:diameter_m,
+      mass_kg:0,
+      kinetic_energy_j:0,
+      kinetic_energy_mt:0,
+      crater:{diameter_km:0,radius_km:0,depth_km:0},
+      blast_radius_km:0,
+      seismic_magnitude:0
+    };
+  }
+  const radius_m=diameter_m/2;
+  const volume_m3=(4/3)*Math.PI*Math.pow(radius_m,3);
+  const mass_kg=volume_m3*density;
+  const velocity_m_s=velocity_km_s*1000;
+  const energy_j=0.5*mass_kg*Math.pow(velocity_m_s,2);
+  const energy_mt=energy_j/J_PER_MEGATON;
+  const crater=calculateCrater(diameter_m/1000,density,velocity_km_s,angle_deg);
+  const blast_km=0.32*Math.pow(energy_mt,1/3);
+  const magnitude=energy_j>0?Math.max(0,0.67*Math.log10(energy_j)-5.87):0;
+  return{
+    diameter_avg_m:diameter_m,
+    mass_kg:mass_kg,
+    kinetic_energy_j:energy_j,
+    kinetic_energy_mt:energy_mt,
+    crater:crater,
+    blast_radius_km:blast_km,
+    seismic_magnitude:magnitude
+  };
+}
+
+async function fetchNeoById(id){
+  const res=await fetch(`https://api.nasa.gov/neo/rest/v1/neo/${id}?api_key=${NASA_API_KEY}`);
+  if(!res.ok)throw new Error('No encontrado');
+  return await res.json();
+}
+
+async function fetchNeoByName(name){
+  const limit=100;
+  for(let page=0;page<limit;page++){
+    const res=await fetch(`https://api.nasa.gov/neo/rest/v1/neo/browse?page=${page}&api_key=${NASA_API_KEY}`);
+    if(!res.ok)break;
+    const data=await res.json();
+    for(const neo of data.near_earth_objects||[]){
+      if((neo.name||'').toLowerCase().includes(name.toLowerCase())){
+        return neo;
+      }
+    }
+    const totalPages=data.page?.total_pages;
+    if(totalPages==null||page>=totalPages-1)break;
+  }
+  throw new Error('No encontrado');
+}
+
+searchBtn.onclick=async()=>{
+  const query=searchInput.value.trim();
+  if(!query){
+    showMessage('ℹ️ Ingresa un nombre o ID');
+    return;
+  }
+  try{
+    let neo;
+    if(/^\d+$/.test(query)){
+      try{
+        neo=await fetchNeoById(query);
+      }catch(e){
+        neo=await fetchNeoByName(query);
+      }
+    }else{
+      neo=await fetchNeoByName(query);
+    }
+    const analysis=simulateImpact(neo);
+    if(analysis.diameter_avg_m){
+      const avg=Math.round(analysis.diameter_avg_m);
+      document.getElementById('diam').value=avg;
+      document.getElementById('diamVal').textContent=avg;
+    }
+    if(analysis.approach_velocity_km_s){
+      const vel=Math.round(analysis.approach_velocity_km_s);
+      document.getElementById('vel').value=vel;
+      document.getElementById('velVal').textContent=vel;
+    }
+    if(analysis.impact_angle_deg){
+      const ang=Math.round(analysis.impact_angle_deg);
+      document.getElementById('ang').value=ang;
+      document.getElementById('angVal').textContent=ang;
+    }
+    const dens=analysis.density_kg_m3;
+    let bestKey='ordinary';
+    let minDiff=Infinity;
+    for(const key in TYPE_DATA){
+      const diff=Math.abs(TYPE_DATA[key].density-dens);
+      if(diff<minDiff){
+        minDiff=diff;
+        bestKey=key;
+      }
+    }
+    document.getElementById('type').value=bestKey;
+    showMessage('✅ Asteroide cargado. Selecciona un punto de impacto y pulsa Simular.');
+  }catch(err){
+    console.error(err);
+    showMessage('⚠️ No se encontró el asteroide');
+  }
+};
+
+simulateBtn.onclick=()=>{
+  const typeKey=type.value;
+  const rho=TYPE_DATA[typeKey].density;
+  const d=+diam.value;
+  const v=+vel.value;
+  const a=+ang.value;
+  const analysis=simulateCustom(rho,d,v,a);
+  const E=analysis.kinetic_energy_j;
+  const E_mt=analysis.kinetic_energy_mt;
+  const crater_m=analysis.crater.diameter_km*1000;
+  const blast_km=blastR(E);
+  animateMeteor(impactLatLng,d,a,blast_km,crater_m,rho,v,E,E_mt,analysis);
+};
+
+function animateMeteor(target,d,a,blast_km,crater_m,rho,v,E,E_mt,analysis){
+  if(window._layers) window._layers.forEach(l=>map.removeLayer(l));
+  window._layers=[];
+
+  const startLat=target.lat+15*Math.cos(a*Math.PI/180);
+  const startLng=target.lng-15*Math.sin(a*Math.PI/180);
+  const meteorRadius=Math.min(25,Math.max(8,d/400));
+  const meteorColor=d<100?'#ff9933':d<1000?'#ff3300':'#ffffcc';
+
+  const meteor=L.circleMarker([startLat,startLng],{
+    radius:meteorRadius,color:meteorColor,fillColor:meteorColor,fillOpacity:0.9
+  }).addTo(map);
+  window._layers.push(meteor);
+
+  let step=0,steps=250,delay=20;
+  const interval=setInterval(()=>{
+    const lat=startLat+(target.lat-startLat)*step/steps;
+    const lng=startLng+(target.lng-startLng)*step/steps;
+    meteor.setLatLng([lat,lng]);
+    const flame=L.circleMarker([lat,lng],{radius:2,color:'orange',fillColor:'red',fillOpacity:0.6}).addTo(map);
+    setTimeout(()=>map.removeLayer(flame),400);
+
+    if (step === Math.floor(steps * 0.03)) showMessage("☄ Ingreso atmosférico detectado...");
+    if (step === Math.floor(steps * 0.35)) setTimeout(() => showMessage("🔥 Trayectoria establecida..."), 360);
+    if (step === Math.floor(steps * 0.76)) setTimeout(() => showMessage("⚠️ Impacto inminente..."), 200);
+
+    if(step>=steps){
+      clearInterval(interval);
+      map.removeLayer(meteor);
+      triggerImpact(target,crater_m,blast_km,d,E_mt,analysis);
+    }
+    step++;
+  },delay);
+}
+
+function showMessage(text){
+  const div=document.createElement('div');
+  div.textContent=text;
+  Object.assign(div.style,{
+    position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+    background:'rgba(0,0,0,0.7)',color:'white',padding:'12px 20px',
+    borderRadius:'10px',fontSize:'18px',zIndex:5000
+  });
+  document.body.appendChild(div);
+  setTimeout(()=>div.remove(),2000);
+}
+
+function triggerImpact(latlng,crater_m,blast_km,d,E_mt,analysis){
+  flash.style.opacity=1;
+  document.body.classList.add('shake');
+  setTimeout(()=>{flash.style.opacity=0;document.body.classList.remove('shake');},3500);
+
+  const crater=L.circle(latlng,{radius:crater_m/2,color:'#222',fillColor:'#111',fillOpacity:0.2}).addTo(map);
+  const heat=L.circle(latlng,{radius:blast_km*600,color:'#ff3300',fillColor:'#ff9933',fillOpacity:0.25}).addTo(map);
+  const shock=L.circle(latlng,{radius:blast_km*800,color:'#0066ff',fillColor:'#99ccff',fillOpacity:0.18}).addTo(map);
+  window._layers.push(crater,heat,shock);
+
+  let extinctionType="Ninguna extinción significativa";
+  let disasters=[];
+  if(d>=10000){extinctionType="💀 Extinción global";disasters=["Terremotos masivos","Tsunamis globales","Tormentas de fuego","Oscurecimiento atmosférico"];}
+  else if(d>=5000){extinctionType="☢️ Extinción pasiva";disasters=["Terremotos regionales","Tsunamis costeros","Incendios masivos","Cambio climático temporal"];}
+  else if(d>=1000){disasters=["Tsunamis locales","Incendios urbanos","Terremotos menores"];}
+  else if(d>=100){disasters=["Daños por onda expansiva","Incendios aislados"];}
+
+  setTimeout(() => showMessage(extinctionType), 1500);
+  reportBtn.style.display='block';
+
+  results.textContent=`
+🔭 Parámetros del impacto:
+• Ángulo de impacto: ${+ang.value}° y velocidad de ${+vel.value} km/s
+• Densidad del asteroide: ${TYPE_DATA[type.value].density.toLocaleString()} kg/m³
+• Diámetro del asteroide: ${d.toLocaleString()} m
+• Masa aproximada: ${analysis.mass_kg.toExponential(3)} kg
+
+💥 Energía de impacto:
+• Energía cinética total: ${analysis.kinetic_energy_mt.toFixed(2)} Mt TNT
+• Energía cinética (J): ${analysis.kinetic_energy_j.toExponential(3)} J
+• Diámetro del cráter: ${(crater_m/1000).toFixed(2)} km
+
+🌋 Efectos ambientales:
+• Radio térmico: ${(blast_km*600/1000).toFixed(1)} km
+• Onda expansiva: ${(blast_km*800/1000).toFixed(1)} km
+
+🌪️ Efectos sísmicos:
+• Magnitud sísmica equivalente: M ${analysis.seismic_magnitude.toFixed(1)}
+
+🌪️ Desastres naturales generados:
+${disasters.length?disasters.map(d=>`• ${d}`).join('\n'):"• Sin desastres relevantes"}
+
+☠️ Tipo de extinción:
+• ${extinctionType}
+`;
+}
+
+reportBtn.onclick=()=>{reportModal.style.display=reportModal.style.display==='none'?'block':'none';};
+
+['diam','vel','ang'].forEach(id=>{
+  const el=document.getElementById(id);
+  const val=document.getElementById(id+'Val');
+  el.addEventListener('input',()=>val.textContent=el.value);
+});
+</script>
+</body>
+</html>
